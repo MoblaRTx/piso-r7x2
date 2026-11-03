@@ -171,9 +171,10 @@ function construir(d) {
 
   const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, -200, 400);
   const target = new THREE.Vector3(0, 0, 0);
-  const dir = new THREE.Vector3(1, 1.05, 1).normalize();
+  // en vertical (celular) la cámara mira más desde arriba para que la oficina ocupe más alto
+  const dir = new THREE.Vector3(1, innerWidth < innerHeight ? 1.8 : 1.05, 1).normalize();
   function ubicar() { cam.position.copy(target).addScaledVector(dir, 80); cam.lookAt(target); }
-  let vista = innerWidth < 700 ? 1.5 : 1;  // en el celular arranca más cerca; se aleja pellizcando
+  let vista = innerWidth < 700 ? 1.15 : 1;  // en el celular arranca más cerca; se aleja pellizcando
   function tam() {
     const w = innerWidth, h = innerHeight, a = w / h;
     const alto = a < 1 ? 54 / a : 32;
@@ -409,7 +410,7 @@ function construir(d) {
       v.project(cam);
       e.el.style.left = ((v.x + 1) / 2 * w).toFixed(1) + "px"; e.el.style.top = ((1 - v.y) / 2 * h).toFixed(1) + "px";
       // en el celular, los nombres de cada persona aparecen al acercarse (pellizcar); las salas siempre
-      e.el.classList.toggle("lejos", !e.el.classList.contains("sala") && !e.el.classList.contains("fija") && vista < (w < 700 ? 1.4 : .8));
+      e.el.classList.toggle("lejos", !e.el.classList.contains("sala") && !e.el.classList.contains("fija") && vista < (w < 700 ? 1.7 : .8));
     });
     requestAnimationFrame(cuadro);
   }
