@@ -158,6 +158,26 @@ function render(d) {
   construir(d);
   $("#carga").style.opacity = 0; setTimeout(() => $("#carga").remove(), 600);
   setTimeout(() => $("#hint").style.opacity = 0, 6000);
+  if (location.protocol.startsWith("http")) { pulso(); setInterval(pulso, 60000); }
+}
+
+/* ---------- en vivo: vivo.json lo escribe un robot de GitHub cada 15 min ---------- */
+let VIVO = null, refrescarTele = () => {};
+async function pulso() {
+  try {
+    const r = await fetch("vivo.json?t=" + Date.now(), {cache: "no-store"}); if (!r.ok) return;
+    const v = await r.json();
+    if (!v.valor || (VIVO && VIVO.hora === v.hora)) return;
+    VIVO = v; D.demo.valor = v.valor; D.demo.ganancia_pct = v.ganancia_pct;
+    const hoy = v.hora.slice(0, 10), h = D.historial, u = h[h.length - 1];
+    if (u && u.f === hoy) u.v = v.valor; else h.push({f: hoy, v: v.valor, o: 0});
+    const up = v.ganancia_pct >= 0;
+    $("#kpiValor").textContent = money(v.valor);
+    $("#kpiDelta").textContent = `${pct(v.ganancia_pct)} · día ${Math.min(D.demo.dias, D.demo.dias_prueba)}/${D.demo.dias_prueba}`;
+    $("#kpiDelta").className = up ? "up" : "down";
+    $("#stamp").textContent = "● en vivo · " + new Date(v.hora).toLocaleTimeString("es", {hour: "numeric", minute: "2-digit"});
+    refrescarTele();
+  } catch (e) { /* sin internet: se queda con lo último */ }
 }
 
 function construir(d) {
@@ -269,14 +289,18 @@ function construir(d) {
   // pantalla grande con la cuenta
   const lienzo = document.createElement("canvas"); lienzo.width = 640; lienzo.height = 360;
   const cx = lienzo.getContext("2d");
-  cx.fillStyle = "#15131c"; cx.fillRect(0, 0, 640, 360);
-  cx.fillStyle = "#a39cb2"; cx.font = "600 24px JetBrains Mono, monospace"; cx.fillText("CUENTA DEMO", 32, 52);
-  cx.fillStyle = "#f4f0e8"; cx.font = "800 82px Unbounded, Arial Black, sans-serif"; cx.fillText(money(d.demo.valor), 28, 140);
-  cx.fillStyle = d.demo.ganancia_pct >= 0 ? "#3ddc97" : "#ff6b7a"; cx.font = "600 30px JetBrains Mono, monospace"; cx.fillText(pct(d.demo.ganancia_pct), 32, 186);
-  const hh = d.historial; if (hh.length > 1) { const vs = hh.map(q => q.v).concat(100000), lo = Math.min(...vs) - 150, hi = Math.max(...vs) + 150;
-    cx.strokeStyle = cx.fillStyle; cx.lineWidth = 6; cx.lineJoin = "round"; cx.beginPath();
-    hh.forEach((q, i) => { const px = 32 + i * 576 / (hh.length - 1), py = 330 - (q.v - lo) / (hi - lo) * 110; i ? cx.lineTo(px, py) : cx.moveTo(px, py); }); cx.stroke(); }
+  function pintarTele() {
+    cx.fillStyle = "#15131c"; cx.fillRect(0, 0, 640, 360);
+    cx.fillStyle = "#a39cb2"; cx.font = "600 24px JetBrains Mono, monospace"; cx.fillText(VIVO ? "CUENTA DEMO · EN VIVO" : "CUENTA DEMO", 32, 52);
+    cx.fillStyle = "#f4f0e8"; cx.font = "800 82px Unbounded, Arial Black, sans-serif"; cx.fillText(money(D.demo.valor), 28, 140);
+    cx.fillStyle = D.demo.ganancia_pct >= 0 ? "#3ddc97" : "#ff6b7a"; cx.font = "600 30px JetBrains Mono, monospace"; cx.fillText(pct(D.demo.ganancia_pct), 32, 186);
+    const hh = D.historial; if (hh.length > 1) { const vs = hh.map(q => q.v).concat(100000), lo = Math.min(...vs) - 150, hi = Math.max(...vs) + 150;
+      cx.strokeStyle = cx.fillStyle; cx.lineWidth = 6; cx.lineJoin = "round"; cx.beginPath();
+      hh.forEach((q, i) => { const px = 32 + i * 576 / (hh.length - 1), py = 330 - (q.v - lo) / (hi - lo) * 110; i ? cx.lineTo(px, py) : cx.moveTo(px, py); }); cx.stroke(); }
+    tex.needsUpdate = true;
+  }
   const tex = new THREE.CanvasTexture(lienzo); tex.encoding = THREE.sRGBEncoding;
+  refrescarTele = pintarTele; pintarTele();
   const tele = new THREE.Group();
   caja(4.4, 2.6, .16, "#22202a", 0, 1.2, 0, {}, tele);
   const pant = new THREE.Mesh(new THREE.PlaneGeometry(4.15, 2.33), new THREE.MeshBasicMaterial({map: tex})); pant.position.set(0, 2.5, .09); tele.add(pant);
