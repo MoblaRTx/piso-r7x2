@@ -1,4 +1,4 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Floor"><meta name="theme-color" content="#0e0c15"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{height:100%}</style></head><body><title>Trading Floor</title>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Floor"><meta name="theme-color" content="#0e0c15"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{height:100%}</style></head><body><title>La Agencia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=Unbounded:wght@600;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -81,27 +81,26 @@ html,body{height:100%;margin:0;background:var(--ink);color:var(--text);font-fami
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const money = v => "$" + Math.round(v).toLocaleString("en-US");
 const pct = v => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
-const QUIETO = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const QUIETO = false;  // Romano quiere ver a todos moverse aunque Windows tenga las animaciones apagadas
 
 /* ---------- gráfico (SVG) ---------- */
 function grafico(h) {
   if (!h || h.length < 2) return "";
-  const W = 560, H = 190, L = 6, R = 6, T = 22, B = 24, base = 100000;
-  const vals = h.map(d => d.v).concat(base);
-  let lo = Math.min(...vals), hi = Math.max(...vals); const pad = Math.max((hi - lo) * .2, 250); lo -= pad; hi += pad;
+  const W = 560, H = 190, L = 6, R = 6, T = 22, B = 24, base = 0;  // h[].p = % desde el inicio (la web no muestra montos)
+  const vals = h.map(d => d.p).concat(base);
+  let lo = Math.min(...vals), hi = Math.max(...vals); const pad = Math.max((hi - lo) * .2, .25); lo -= pad; hi += pad;
   const x = i => L + i * (W - L - R) / (h.length - 1), y = v => T + (hi - v) * (H - T - B) / (hi - lo);
-  const pts = h.map((d, i) => `${x(i).toFixed(1)},${y(d.v).toFixed(1)}`).join(" ");
-  const u = h[h.length - 1], col = u.v >= base ? "#3ddc97" : "#ff6b7a";
+  const pts = h.map((d, i) => `${x(i).toFixed(1)},${y(d.p).toFixed(1)}`).join(" ");
+  const u = h[h.length - 1], col = u.p >= base ? "#3ddc97" : "#ff6b7a";
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Valor de la demo por día">
   <defs><linearGradient id="gg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".35"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
   <line x1="${L}" x2="${W - R}" y1="${y(base)}" y2="${y(base)}" stroke="#a39cb2" stroke-dasharray="4 5" opacity=".6"/>
-  <text x="${W - R}" y="${y(base) - 6}" text-anchor="end" fill="#a39cb2" font-family="JetBrains Mono,monospace" font-size="12">$100k inicio</text>
+  <text x="${W - R}" y="${y(base) - 6}" text-anchor="end" fill="#a39cb2" font-family="JetBrains Mono,monospace" font-size="12">0% inicio</text>
   <polygon points="${x(0)},${H - B} ${pts} ${x(h.length - 1)},${H - B}" fill="url(#gg)"/>
   <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="3" stroke-linejoin="round"/>
-  ${h.map((d, i) => d.o ? `<circle cx="${x(i)}" cy="${y(d.v)}" r="3.5" fill="#ffb547"/>` : "").join("")}
-  <circle cx="${x(h.length - 1)}" cy="${y(u.v)}" r="5.5" fill="${col}" stroke="#1b1824" stroke-width="3"/>
+  ${h.map((d, i) => d.o ? `<circle cx="${x(i)}" cy="${y(d.p)}" r="3.5" fill="#ffb547"/>` : "").join("")}
+  <circle cx="${x(h.length - 1)}" cy="${y(u.p)}" r="5.5" fill="${col}" stroke="#1b1824" stroke-width="3"/>
   <text x="${L}" y="${H - 6}" fill="#a39cb2" font-family="JetBrains Mono,monospace" font-size="12">${esc(h[0].f.slice(5))}</text>
   <text x="${W - R}" y="${H - 6}" text-anchor="end" fill="#a39cb2" font-family="JetBrains Mono,monospace" font-size="12">${esc(u.f.slice(5))}</text></svg>`;
 }
@@ -119,7 +118,7 @@ function abrir(tipo, extra) {
   const ficha = a => `<div class="chips"><span class="chip">Modelo <b>${esc(a.modelo || "—")}</b></span>${a.agente ? `<span class="chip">Carpeta <b>agentes/${esc(a.agente)}</b></span>` : ""}<span class="chip">Reporta a <b>Jarvis Trading</b></span></div>`;
   let h = "";
   if (tipo === "cuenta") h = `<span class="eyebrow">Pantalla de recepción · cuenta demo</span>
-    <div><div class="big">${money(dm.valor)}</div><span class="${up ? "up" : "down"}" style="font-family:var(--mono)">${pct(dm.ganancia_pct)} desde el inicio</span></div>
+    <div><div class="big ${up ? "up" : "down"}">${pct(dm.ganancia_pct)}</div><span style="font-family:var(--mono)">desde el inicio</span></div>
     <div class="chart">${grafico(d.historial)}</div>
     <div class="chips"><span class="chip">Día <b>${Math.min(dm.dias, dm.dias_prueba)}</b> de ${dm.dias_prueba}</span><span class="chip">Revisión <b>${esc(rev)}</b></span>
     <span class="chip">Efectivo <b>${Math.round(dm.efectivo_pct)}%</b></span><span class="chip">Órdenes hoy <b>${dm.ordenes_hoy}</b></span></div>
@@ -145,16 +144,16 @@ function abrir(tipo, extra) {
   if (tipo === "claude") { const j = d.jefe || {}; h = `<span class="eyebrow">Gerencia · jefe del piso</span><h2><span class="led on"></span>${esc(j.nombre || "Jarvis Trading")}</h2>
     <div class="chips"><span class="chip">Modelo <b>${esc(j.modelo || "Opus")}</b></span><span class="chip">Reporta a <b>Jarvis Central</b></span></div>
     <p>${esc(j.tarea || "")}</p><p>No mueve dinero real. Eso pasa solo con tu ✅.</p>`; }
-  if (tipo === "central") { const c = d.campus || [], aten = c.filter(p => p.necesita_de_romano);
+  if (tipo === "central") { const c = d.campus || [], aten = c.filter(p => p.te_necesita);
     h = `<span class="eyebrow">Campus · torre central</span><h2><span class="led on"></span>Jarvis Central</h2>
     <div class="chips"><span class="chip">Modelo <b>Opus</b></span><span class="chip">Carpeta <b>Jarvis-Central</b></span><span class="chip">Le reportan <b>${c.length} áreas</b></span></div>
     <p>Ve el cuadro completo, junta el parte del día de cada Jarvis y te dice qué necesita de ti. No toca correos ni dinero de nadie.</p>
     <span class="eyebrow">Te necesitan</span>
-    <div class="rows">${aten.length ? aten.map(p => `<div class="strat"><b>${esc(p.nombre)}</b><span>${esc(p.necesita_de_romano)}</span></div>`).join("") : "<p>Nada pendiente. 🎉</p>"}</div>`; }
+    <div class="rows">${aten.length ? aten.map(p => `<div class="strat"><b>${esc(p.nombre)}</b><span>Tiene pendientes para ti · el detalle está en tu chat con Jarvis Central</span></div>`).join("") : "<p>Nada pendiente. 🎉</p>"}</div>`; }
   if (tipo === "area") { const p = extra, t = {ok: ["on", "Todo bien"], atencion: ["wait", "Necesita atención"], parado: ["off", "Parado"], construccion: ["wait", "En construcción 🚧"]}[p.estado] || ["", p.estado];
     h = `<span class="eyebrow">Campus · ${esc(p.nombre)}</span><h2><span class="led ${t[0]}"></span>${esc(p.jefe)}</h2>
     <div class="chips"><span class="chip">Modelo <b>${esc(p.modelo)}</b></span><span class="chip">Estado <b>${t[1]}</b></span><span class="chip">Reporta a <b>Jarvis Central</b></span></div>
-    <p>${esc(p.publico)}</p>${p.necesita_de_romano ? `<div class="strat"><b>Te necesita</b><span>${esc(p.necesita_de_romano)}</span></div>` : ""}
+    <p>${esc(p.publico)}</p>${p.te_necesita ? `<div class="strat"><b>Te necesita</b><span>Tiene pendientes para ti · el detalle está en tu chat con Jarvis Central</span></div>` : ""}
     <span class="nota">Parte del día · ${esc(p.actualizado)}</span>
     ${(p.oficina && p.oficina.hoy || []).length ? `<span class="eyebrow">Hoy</span><div class="rows">${p.oficina.hoy.map(l => `<div class="strat"><span>${esc(l)}</span></div>`).join("")}</div>` : ""}
     ${(p.oficina && p.oficina.pendientes || []).length ? `<span class="eyebrow">Lo que sigue</span><div class="rows">${p.oficina.pendientes.map(l => `<div class="strat"><span>${esc(l)}</span></div>`).join("")}</div>` : ""}
@@ -171,9 +170,9 @@ function render(d) {
   if (!d) { $("#carga").textContent = "Todavía no hay datos. Llegan con la señal de las 9 AM."; return; }
   D = d;
   const dm = d.demo, up = dm.ganancia_pct >= 0;
-  $("#kpiValor").textContent = money(dm.valor);
-  $("#kpiDelta").textContent = `${pct(dm.ganancia_pct)} · día ${Math.min(dm.dias, dm.dias_prueba)}/${dm.dias_prueba}`;
-  $("#kpiDelta").className = up ? "up" : "down";
+  $("#kpiValor").textContent = pct(dm.ganancia_pct);
+  $("#kpiValor").className = up ? "up" : "down";
+  $("#kpiDelta").textContent = `demo · día ${Math.min(dm.dias, dm.dias_prueba)}/${dm.dias_prueba}`;
   $("#stamp").textContent = "act. " + d.actualizado.slice(5);
   if (!window.THREE) { $("#carga").textContent = "No se pudo cargar el 3D. Revisa tu conexión."; return; }
   construir(d);
@@ -189,14 +188,12 @@ async function pulso() {
   try {
     const r = await fetch("vivo.json?t=" + Date.now(), {cache: "no-store"}); if (!r.ok) return;
     const v = await r.json();
-    if (!v.valor || (VIVO && VIVO.hora === v.hora)) return;
-    VIVO = v; D.demo.valor = v.valor; D.demo.ganancia_pct = v.ganancia_pct;
+    if (v.ganancia_pct == null || (VIVO && VIVO.hora === v.hora)) return;
+    VIVO = v; D.demo.ganancia_pct = v.ganancia_pct;
     const hoy = v.hora.slice(0, 10), h = D.historial, u = h[h.length - 1];
-    if (u && u.f === hoy) u.v = v.valor; else h.push({f: hoy, v: v.valor, o: 0});
-    const up = v.ganancia_pct >= 0;
-    $("#kpiValor").textContent = money(v.valor);
-    $("#kpiDelta").textContent = `${pct(v.ganancia_pct)} · día ${Math.min(D.demo.dias, D.demo.dias_prueba)}/${D.demo.dias_prueba}`;
-    $("#kpiDelta").className = up ? "up" : "down";
+    if (u && u.f === hoy) u.p = v.ganancia_pct; else h.push({f: hoy, p: v.ganancia_pct, o: 0});
+    $("#kpiValor").textContent = pct(v.ganancia_pct);
+    $("#kpiValor").className = v.ganancia_pct >= 0 ? "up" : "down";
     $("#stamp").textContent = "● en vivo · " + new Date(v.hora).toLocaleTimeString("es", {hour: "numeric", minute: "2-digit"});
     refrescarTele();
   } catch (e) { /* sin internet: se queda con lo último */ }
@@ -317,12 +314,15 @@ function construir(d) {
   const pantalones = ["#3b5ba5", "#2f3b55", "#5a4636", "#3d6b4a"];
   function persona({ropa = "#5b8def", piel = "#e8b98f", pelo = "#2a1f1a", x, z, rot = 0}) {
     const g = new THREE.Group(), pan = pantalones[Math.floor(azar() * pantalones.length)];
-    caja(.22, .6, .24, pan, -.12, 0, 0, {}, g); caja(.22, .6, .24, pan, .12, 0, 0, {}, g);   // piernas
+    // brazos y piernas cuelgan de una bisagra (cadera / hombro) para balancearse al caminar, estilo bloques
+    const bisagra = (x, y) => { const b = new THREE.Group(); b.position.set(x, y, 0); g.add(b); return b; };
+    const piernas = [-.12, .12].map(px => { const b = bisagra(px, .6); caja(.22, .6, .24, pan, 0, -.6, 0, {}, b); return b; });
     caja(.48, .62, .26, ropa, 0, .6, 0, {}, g);                                               // cuerpo
-    caja(.2, .62, .22, ropa, -.35, .6, 0, {}, g); caja(.2, .62, .22, ropa, .35, .6, 0, {}, g); // brazos
-    caja(.12, .14, .2, piel, -.35, .5, 0, {}, g); caja(.12, .14, .2, piel, .35, .5, 0, {}, g); // manos
+    const brazos = [-.35, .35].map(px => { const b = bisagra(px, 1.22);
+      caja(.2, .62, .22, ropa, 0, -.62, 0, {}, b); caja(.12, .14, .2, piel, 0, -.72, 0, {}, b); return b; });  // brazo + mano
     const cabeza = new THREE.Mesh(cubo(.46, .46, .46), [mat(piel), mat(piel), mat(pelo), mat(piel), cara(piel, pelo), mat(pelo)]);
     cabeza.position.y = 1.22 + .23; cabeza.castShadow = true; g.add(cabeza);
+    g.userData.cuerpo = {piernas, brazos, cabeza, fase: azar() * 6, mira: azar() * 6};
     g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g); return g;
   }
   function robot({x, z, color = "#8f80ff", estado = "live"}) {
@@ -355,11 +355,11 @@ function construir(d) {
   function pintarTele() {
     cx.fillStyle = "#15131c"; cx.fillRect(0, 0, 640, 360);
     cx.fillStyle = "#a39cb2"; cx.font = "600 24px JetBrains Mono, monospace"; cx.fillText(VIVO ? "CUENTA DEMO · EN VIVO" : "CUENTA DEMO", 32, 52);
-    cx.fillStyle = "#f4f0e8"; cx.font = "800 82px Unbounded, Arial Black, sans-serif"; cx.fillText(money(D.demo.valor), 28, 140);
-    cx.fillStyle = D.demo.ganancia_pct >= 0 ? "#3ddc97" : "#ff6b7a"; cx.font = "600 30px JetBrains Mono, monospace"; cx.fillText(pct(D.demo.ganancia_pct), 32, 186);
-    const hh = D.historial; if (hh.length > 1) { const vs = hh.map(q => q.v).concat(100000), lo = Math.min(...vs) - 150, hi = Math.max(...vs) + 150;
+    cx.fillStyle = D.demo.ganancia_pct >= 0 ? "#3ddc97" : "#ff6b7a"; cx.font = "800 82px Unbounded, Arial Black, sans-serif"; cx.fillText(pct(D.demo.ganancia_pct), 28, 140);
+    cx.font = "600 30px JetBrains Mono, monospace"; cx.fillText(`día ${Math.min(D.demo.dias, D.demo.dias_prueba)} de ${D.demo.dias_prueba}`, 32, 186);
+    const hh = D.historial; if (hh.length > 1) { const vs = hh.map(q => q.p).concat(0), lo = Math.min(...vs) - .15, hi = Math.max(...vs) + .15;
       cx.strokeStyle = cx.fillStyle; cx.lineWidth = 6; cx.lineJoin = "round"; cx.beginPath();
-      hh.forEach((q, i) => { const px = 32 + i * 576 / (hh.length - 1), py = 330 - (q.v - lo) / (hi - lo) * 110; i ? cx.lineTo(px, py) : cx.moveTo(px, py); }); cx.stroke(); }
+      hh.forEach((q, i) => { const px = 32 + i * 576 / (hh.length - 1), py = 330 - (q.p - lo) / (hi - lo) * 110; i ? cx.lineTo(px, py) : cx.moveTo(px, py); }); cx.stroke(); }
     tex.needsUpdate = true;
   }
   const tex = new THREE.CanvasTexture(lienzo); tex.encoding = THREE.sRGBEncoding;
@@ -490,6 +490,7 @@ function construir(d) {
   const central = persona({ropa: "#1f2a44", piel: "#f1cfae", pelo: "#2a1f1a", x: C0.x + 1.6, z: C0.z + 3.6, rot: .3});
   const abrirCentral = () => abrir("central");
   marcar(torre, abrirCentral); marcar(central, abrirCentral);
+  caminantes.push({g: central, x0: C0.x - 3.5, x1: C0.x + 3.5, z0: C0.z + 3, z1: C0.z + 4.2, dest: null, pausa: 2});  // da vueltas por la plaza
   etiqueta(`<i class="on"></i>Jarvis Central · Opus`, new THREE.Vector3(C0.x, 10, C0.z - .5), abrirCentral, "fija");
   // un edificio por área, en las 4 esquinas
   const estilo = {
@@ -636,13 +637,19 @@ function construir(d) {
   function cuadro(t) {
     const dt = Math.min((t - t0) / 1000, .05); t0 = t;
     if (!QUIETO) {
+      // balanceo estilo bloques: brazo y pierna contrarios van juntos; quieto, mira a los lados
+      const balancear = (cu, giro) => { cu.piernas[0].rotation.x = giro; cu.piernas[1].rotation.x = -giro; cu.brazos[0].rotation.x = -giro * .8; cu.brazos[1].rotation.x = giro * .8; };
       caminantes.forEach(c => {
-        if (c.pausa > 0) { c.pausa -= dt; return; }
+        const g = c.g, cu = g.userData.cuerpo;
+        if (c.pausa > 0) { c.pausa -= dt;
+          if (cu) { balancear(cu, cu.piernas[0].rotation.x * .8); cu.cabeza.rotation.y = Math.sin(t / 900 + cu.mira) * .5; }
+          return; }
         if (!c.dest) c.dest = new THREE.Vector3(c.x0 + Math.random() * (c.x1 - c.x0), 0, c.z0 + Math.random() * (c.z1 - c.z0));
-        const g = c.g, dx = c.dest.x - g.position.x, dz = c.dest.z - g.position.z, dist = Math.hypot(dx, dz), vel = (c.rapido ? 1.6 : .7) * dt;
-        if (dist < .05) { c.dest = null; c.pausa = 1.5 + Math.random() * 4; g.position.y = 0; return; }
+        const dx = c.dest.x - g.position.x, dz = c.dest.z - g.position.z, dist = Math.hypot(dx, dz), vel = (c.rapido ? 1.6 : .7) * dt;
+        if (dist < .05) { c.dest = null; c.pausa = 1.5 + Math.random() * 4; return; }
         g.position.x += dx / dist * Math.min(vel, dist); g.position.z += dz / dist * Math.min(vel, dist);
-        g.rotation.y = Math.atan2(dx, dz); g.position.y = Math.abs(Math.sin(t / 110)) * .06;
+        g.rotation.y = Math.atan2(dx, dz);
+        if (cu) { cu.fase += Math.min(vel, dist) * 5; balancear(cu, Math.sin(cu.fase) * .7); cu.cabeza.rotation.y *= .9; }
       });
       flotantes.forEach((l, i) => l.material.emissiveIntensity = 1.1 + Math.sin(t / 400 + i) * .6);
     }
@@ -661,414 +668,7 @@ function construir(d) {
   requestAnimationFrame(cuadro);
 }
 
-const DATA = {
- "actualizado": "2026-11-03 03:33 PM",
- "demo": {
-  "valor": 98905.84,
-  "ganancia_pct": -1.09,
-  "dias": 14,
-  "dias_prueba": 30,
-  "revision": "2026-11-20",
-  "ordenes_hoy": 0,
-  "efectivo_pct": 81.4
- },
- "historial": [
-  {
-   "f": "2026-10-21",
-   "v": 99987.5,
-   "o": 6
-  },
-  {
-   "f": "2026-10-22",
-   "v": 99815.3,
-   "o": 2
-  },
-  {
-   "f": "2026-10-23",
-   "v": 99571.19,
-   "o": 2
-  },
-  {
-   "f": "2026-10-24",
-   "v": 99460.73,
-   "o": 0
-  },
-  {
-   "f": "2026-10-25",
-   "v": 99460.73,
-   "o": 0
-  },
-  {
-   "f": "2026-10-26",
-   "v": 99590.84,
-   "o": 0
-  },
-  {
-   "f": "2026-10-27",
-   "v": 99588.77,
-   "o": 1
-  },
-  {
-   "f": "2026-10-28",
-   "v": 99735.18,
-   "o": 0
-  },
-  {
-   "f": "2026-10-29",
-   "v": 99825.2,
-   "o": 2
-  },
-  {
-   "f": "2026-10-30",
-   "v": 99389.89,
-   "o": 1
-  },
-  {
-   "f": "2026-10-31",
-   "v": 98936.86,
-   "o": 2
-  },
-  {
-   "f": "2026-11-02",
-   "v": 99034.12,
-   "o": 1
-  },
-  {
-   "f": "2026-11-03",
-   "v": 98905.84,
-   "o": 0
-  }
- ],
- "activos": [
-  {
-   "sim": "BTC",
-   "tipo": "cripto",
-   "precio": 76816.0,
-   "peso": 0.0,
-   "votos": 3
-  },
-  {
-   "sim": "ETH",
-   "tipo": "cripto",
-   "precio": 2253.29,
-   "peso": 0.0,
-   "votos": 2
-  },
-  {
-   "sim": "BNB",
-   "tipo": "cripto",
-   "precio": 699.25,
-   "peso": 0.0,
-   "votos": 2
-  },
-  {
-   "sim": "XRP",
-   "tipo": "cripto",
-   "precio": 1.2502,
-   "peso": 0.0,
-   "votos": 1
-  },
-  {
-   "sim": "ADA",
-   "tipo": "cripto",
-   "precio": 0.1886,
-   "peso": 0.0,
-   "votos": 0
-  },
-  {
-   "sim": "LTC",
-   "tipo": "cripto",
-   "precio": 53.72,
-   "peso": 0.0,
-   "votos": 2
-  },
-  {
-   "sim": "DOGE",
-   "tipo": "cripto",
-   "precio": 0.0742,
-   "peso": 0.0,
-   "votos": 1
-  },
-  {
-   "sim": "SOL",
-   "tipo": "cripto",
-   "precio": 91.98,
-   "peso": 0.0,
-   "votos": 2
-  },
-  {
-   "sim": "SPY",
-   "tipo": "etf",
-   "precio": 755.1,
-   "peso": 6.25,
-   "nombre": "S&P 500",
-   "dentro": true,
-   "dist": 1.4
-  },
-  {
-   "sim": "QQQ",
-   "tipo": "etf",
-   "precio": 685.61,
-   "peso": 0.0,
-   "nombre": "Nasdaq 100",
-   "dentro": false,
-   "dist": -2.69
-  },
-  {
-   "sim": "IWM",
-   "tipo": "etf",
-   "precio": 280.58,
-   "peso": 0.0,
-   "nombre": "Empresas pequeñas",
-   "dentro": false,
-   "dist": -1.59
-  },
-  {
-   "sim": "DIA",
-   "tipo": "etf",
-   "precio": 517.555,
-   "peso": 6.25,
-   "nombre": "Dow Jones",
-   "dentro": true,
-   "dist": 1.07
-  },
-  {
-   "sim": "TLT",
-   "tipo": "etf",
-   "precio": 81.19,
-   "peso": 0.0,
-   "nombre": "Bonos EE.UU.",
-   "dentro": false,
-   "dist": -1.54
-  },
-  {
-   "sim": "GLD",
-   "tipo": "etf",
-   "precio": 359.59,
-   "peso": 0.0,
-   "nombre": "Oro",
-   "dentro": false,
-   "dist": -9.67
-  },
-  {
-   "sim": "EFA",
-   "tipo": "etf",
-   "precio": 103.135,
-   "peso": 0.0,
-   "nombre": "Europa/Japón",
-   "dentro": false,
-   "dist": -0.55
-  },
-  {
-   "sim": "EEM",
-   "tipo": "etf",
-   "precio": 61.045,
-   "peso": 0.0,
-   "nombre": "Emergentes",
-   "dentro": false,
-   "dist": -6.64
-  }
- ],
- "bots": [
-  {
-   "id": "voto_cripto",
-   "nombre": "Voto de tendencia",
-   "mercado": "Cripto · 8 monedas",
-   "parte": "50 % de la cuenta",
-   "regla": "6 jueces votan si la tendencia es buena. Más votos = más dinero adentro.",
-   "estado": "live",
-   "tipo": "cripto",
-   "agente": "voto-cripto",
-   "modelo": "Haiku",
-   "reporte": [
-    "Adentro: ninguna moneda (0 de 8).\n",
-    "BTC: 3/6 votos → 0.0% de la cuenta\n",
-    "ETH: 2/6 votos → 0.0% de la cuenta\n",
-    "BNB: 2/6 votos → 0.0% de la cuenta\n",
-    "XRP: 1/6 votos → 0.0% de la cuenta\n",
-    "ADA: 0/6 votos → 0.0% de la cuenta\n",
-    "LTC: 2/6 votos → 0.0% de la cuenta\n",
-    "DOGE: 1/6 votos → 0.0% de la cuenta\n",
-    "SOL: 2/6 votos → 0.0% de la cuenta\n"
-   ]
-  },
-  {
-   "id": "etf150",
-   "nombre": "Media 150 días",
-   "mercado": "ETFs · 8 fondos",
-   "parte": "50 % de la cuenta",
-   "regla": "Adentro si el precio está sobre su promedio de 150 días; afuera si está debajo.",
-   "estado": "live",
-   "tipo": "etf",
-   "agente": "media-150",
-   "modelo": "Haiku",
-   "reporte": [
-    "Adentro: SPY, DIA (2 de 8).\n",
-    "SPY (S&P 500): DENTRO · precio $755.10 vs línea $744.70\n",
-    "QQQ (Nasdaq 100): FUERA · precio $685.61 vs línea $704.56\n",
-    "IWM (Empresas pequeñas): FUERA · precio $280.58 vs línea $285.12\n",
-    "DIA (Dow Jones): DENTRO · precio $517.55 vs línea $512.09\n",
-    "TLT (Bonos EE.UU.): FUERA · precio $81.19 vs línea $82.46\n",
-    "GLD (Oro): FUERA · precio $359.59 vs línea $398.08\n",
-    "EFA (Europa/Japón): FUERA · precio $103.14 vs línea $103.71\n",
-    "EEM (Emergentes): FUERA · precio $61.04 vs línea $65.39\n"
-   ]
-  }
- ],
- "ias": [
-  {
-   "nombre": "Noticias",
-   "idea": "Lee titulares y decide. Solo dinero de mentira.",
-   "estado": "vacante",
-   "modelo": "Sonnet (previsto)",
-   "agente": "noticias"
-  },
-  {
-   "nombre": "IA de gráficos",
-   "idea": "Mira velas y patrones. Solo dinero de mentira.",
-   "estado": "vacante",
-   "modelo": "por definir"
-  }
- ],
- "jefe": {
-  "nombre": "Jarvis Trading",
-  "modelo": "Opus",
-  "tarea": "Junta a los agentes cada mañana a las 9, maneja la demo, te avisa por Telegram, actualiza esta oficina y respalda todo."
- },
- "agente_lab": {
-  "nombre": "Laboratorio",
-  "modelo": "Opus",
-  "agente": "laboratorio",
-  "tarea": "Prueba estrategias nuevas: backtest, después 30 días de demo, y solo con tu OK pasan a dinero real.",
-  "reporte": []
- },
- "laboratorio": [
-  {
-   "nombre": "Voto de tendencia (cripto)",
-   "etapa": "live",
-   "dato": "Examen sorpresa: 19 %/año, peor caída −21 %"
-  },
-  {
-   "nombre": "Media 150 días (ETFs)",
-   "etapa": "live",
-   "dato": "Examen sorpresa: 9 %/año, peor caída −15 %"
-  },
-  {
-   "nombre": "Cruce de medias 20/100",
-   "etapa": "reserva",
-   "dato": "Pasó el examen, no supera a las elegidas"
-  },
-  {
-   "nombre": "Momentum 90 días",
-   "etapa": "reserva",
-   "dato": "Pasó el examen, no supera a las elegidas"
-  },
-  {
-   "nombre": "Tortugas (Donchian)",
-   "etapa": "reserva",
-   "dato": "Pasó el examen, más débil"
-  },
-  {
-   "nombre": "ETFs de materias primas",
-   "etapa": "cola",
-   "dato": "Ronda 3, cuando digas"
-  },
-  {
-   "nombre": "Retroceso en tendencia",
-   "etapa": "rechazada",
-   "dato": "Empató en cero en el examen"
-  },
-  {
-   "nombre": "Ruptura tras calma",
-   "etapa": "rechazada",
-   "dato": "Gana mucho menos que aguantar"
-  },
-  {
-   "nombre": "Price action de Romano (8 versiones)",
-   "etapa": "rechazada",
-   "dato": "Pierde en todas"
-  },
-  {
-   "nombre": "Intradía (5 tipos)",
-   "etapa": "rechazada",
-   "dato": "Pierden después de comisiones"
-  }
- ],
- "conexiones": [
-  {
-   "nombre": "Telegram @Tradingsito_bot",
-   "estado": "ok",
-   "que": "Aviso diario 9 AM"
-  },
-  {
-   "nombre": "Alpaca Paper",
-   "estado": "espera",
-   "que": "Falta pegar las claves para que opere solo"
-  },
-  {
-   "nombre": "Jarvis (París Crepes)",
-   "estado": "pendiente",
-   "que": "Por el buzón compartido"
-  },
-  {
-   "nombre": "Fábrica de videos",
-   "estado": "pendiente",
-   "que": "Se conecta cuando arranque el canal"
-  }
- ],
- "campus": [
-  {
-   "area": "trading",
-   "nombre": "Trading",
-   "jefe": "Jarvis Trading",
-   "modelo": "Opus",
-   "estado": "ok",
-   "publico": "Demo día 14 de 30. 0 órdenes hoy. 2 de 16 activos adentro. Revisión 2026-11-20.",
-   "necesita_de_romano": "Pegar las claves de Alpaca para que la demo opere sola",
-   "actualizado": "2026-11-03 03:33 PM"
-  },
-  {
-   "area": "paris-crepes",
-   "nombre": "París Crepes",
-   "jefe": "Jarvis París Crepes",
-   "modelo": "Opus 5.5",
-   "estado": "atencion",
-   "publico": "El kiosco sigue vendiendo todos los días. Esta semana toca el reporte mensual al mall y ponerse al día con papeles del negocio.",
-   "necesita_de_romano": "Confirmar renta del mall y de la casa, mandar horas de Isaac, decir qué fueron los 2 Zelle del 2 nov, confirmar si el login de Instagram de hoy fue él.",
-   "actualizado": "2026-11-03 15:00"
-  },
-  {
-   "area": "contenido",
-   "nombre": "Contenido",
-   "jefe": "Jarvis Contenido",
-   "modelo": "Claude Opus 5.5",
-   "estado": "ok",
-   "publico": "Canal 'EE.UU. sin manual' en marcha en TikTok, Instagram y YouTube. Primer video publicado hoy. La fábrica hace un video nuevo cada mañana.",
-   "necesita_de_romano": "Subir a mano los videos #2 y #3 (uno por día) y fijar el comentario en el video #1.",
-   "actualizado": "2026-11-03 15:00"
-  },
-  {
-   "area": "automatizaciones",
-   "nombre": "Web y Automatizaciones",
-   "jefe": "Jarvis Automatizaciones",
-   "modelo": "Opus 5.5",
-   "estado": "ok",
-   "publico": "Tienda web de perfumes funcionando con bot de Telegram, catálogo de Facebook sincronizado y respuestas automáticas en Messenger. Proyecto de electrodomésticos esperando al cliente.",
-   "necesita_de_romano": "Subir el logo de Atlas a la página de Facebook; que Victor instale Meta Business Suite; hacer una compra de prueba con enlace de vendedor; presentarle el proyecto a Manuel.",
-   "actualizado": "2026-11-03 12:00"
-  },
-  {
-   "area": "dropshipping",
-   "nombre": "Dropshipping",
-   "jefe": "Jarvis Dropshipping",
-   "modelo": "Opus",
-   "estado": "construccion",
-   "publico": "En construcción. La investigación está guardada; se retoma cuando las otras patas estén andando.",
-   "necesita_de_romano": "",
-   "actualizado": "2026-11-03 (pausado por Romano)"
-  }
- ]
-};
+const DATA = {"actualizado": "2026-11-03 03:50 PM", "demo": {"ganancia_pct": -1.09, "dias": 14, "dias_prueba": 30, "revision": "2026-11-20", "ordenes_hoy": 0, "efectivo_pct": 81.4}, "historial": [{"f": "2026-10-21", "p": -0.01, "o": 6}, {"f": "2026-10-22", "p": -0.18, "o": 2}, {"f": "2026-10-23", "p": -0.43, "o": 2}, {"f": "2026-10-24", "p": -0.54, "o": 0}, {"f": "2026-10-25", "p": -0.54, "o": 0}, {"f": "2026-10-26", "p": -0.41, "o": 0}, {"f": "2026-10-27", "p": -0.41, "o": 1}, {"f": "2026-10-28", "p": -0.26, "o": 0}, {"f": "2026-10-29", "p": -0.17, "o": 2}, {"f": "2026-10-30", "p": -0.61, "o": 1}, {"f": "2026-10-31", "p": -1.06, "o": 2}, {"f": "2026-11-02", "p": -0.97, "o": 1}, {"f": "2026-11-03", "p": -1.09, "o": 0}], "activos": [{"sim": "BTC", "tipo": "cripto", "precio": 76816.0, "peso": 0.0, "votos": 3}, {"sim": "ETH", "tipo": "cripto", "precio": 2253.29, "peso": 0.0, "votos": 2}, {"sim": "BNB", "tipo": "cripto", "precio": 699.25, "peso": 0.0, "votos": 2}, {"sim": "XRP", "tipo": "cripto", "precio": 1.2502, "peso": 0.0, "votos": 1}, {"sim": "ADA", "tipo": "cripto", "precio": 0.1886, "peso": 0.0, "votos": 0}, {"sim": "LTC", "tipo": "cripto", "precio": 53.72, "peso": 0.0, "votos": 2}, {"sim": "DOGE", "tipo": "cripto", "precio": 0.0742, "peso": 0.0, "votos": 1}, {"sim": "SOL", "tipo": "cripto", "precio": 91.98, "peso": 0.0, "votos": 2}, {"sim": "SPY", "tipo": "etf", "precio": 755.1, "peso": 6.25, "nombre": "S&P 500", "dentro": true, "dist": 1.4}, {"sim": "QQQ", "tipo": "etf", "precio": 685.61, "peso": 0.0, "nombre": "Nasdaq 100", "dentro": false, "dist": -2.69}, {"sim": "IWM", "tipo": "etf", "precio": 280.58, "peso": 0.0, "nombre": "Empresas pequeñas", "dentro": false, "dist": -1.59}, {"sim": "DIA", "tipo": "etf", "precio": 517.555, "peso": 6.25, "nombre": "Dow Jones", "dentro": true, "dist": 1.07}, {"sim": "TLT", "tipo": "etf", "precio": 81.19, "peso": 0.0, "nombre": "Bonos EE.UU.", "dentro": false, "dist": -1.54}, {"sim": "GLD", "tipo": "etf", "precio": 359.59, "peso": 0.0, "nombre": "Oro", "dentro": false, "dist": -9.67}, {"sim": "EFA", "tipo": "etf", "precio": 103.135, "peso": 0.0, "nombre": "Europa/Japón", "dentro": false, "dist": -0.55}, {"sim": "EEM", "tipo": "etf", "precio": 61.045, "peso": 0.0, "nombre": "Emergentes", "dentro": false, "dist": -6.64}], "bots": [{"id": "voto_cripto", "nombre": "Voto de tendencia", "mercado": "Cripto · 8 monedas", "parte": "50 % de la cuenta", "regla": "6 jueces votan si la tendencia es buena. Más votos = más dinero adentro.", "estado": "live", "tipo": "cripto", "agente": "voto-cripto", "modelo": "Haiku", "reporte": ["Adentro: ninguna moneda (0 de 8).\n", "BTC: 3/6 votos → 0.0% de la cuenta\n", "ETH: 2/6 votos → 0.0% de la cuenta\n", "BNB: 2/6 votos → 0.0% de la cuenta\n", "XRP: 1/6 votos → 0.0% de la cuenta\n", "ADA: 0/6 votos → 0.0% de la cuenta\n", "LTC: 2/6 votos → 0.0% de la cuenta\n", "DOGE: 1/6 votos → 0.0% de la cuenta\n", "SOL: 2/6 votos → 0.0% de la cuenta\n"]}, {"id": "etf150", "nombre": "Media 150 días", "mercado": "ETFs · 8 fondos", "parte": "50 % de la cuenta", "regla": "Adentro si el precio está sobre su promedio de 150 días; afuera si está debajo.", "estado": "live", "tipo": "etf", "agente": "media-150", "modelo": "Haiku", "reporte": ["Adentro: SPY, DIA (2 de 8).\n", "SPY (S&P 500): DENTRO · precio $755.10 vs línea $744.70\n", "QQQ (Nasdaq 100): FUERA · precio $685.61 vs línea $704.56\n", "IWM (Empresas pequeñas): FUERA · precio $280.58 vs línea $285.12\n", "DIA (Dow Jones): DENTRO · precio $517.55 vs línea $512.09\n", "TLT (Bonos EE.UU.): FUERA · precio $81.19 vs línea $82.46\n", "GLD (Oro): FUERA · precio $359.59 vs línea $398.08\n", "EFA (Europa/Japón): FUERA · precio $103.14 vs línea $103.71\n", "EEM (Emergentes): FUERA · precio $61.04 vs línea $65.39\n"]}], "ias": [{"nombre": "Noticias", "idea": "Lee titulares y decide. Solo dinero de mentira.", "estado": "vacante", "modelo": "Sonnet (previsto)", "agente": "noticias"}, {"nombre": "IA de gráficos", "idea": "Mira velas y patrones. Solo dinero de mentira.", "estado": "vacante", "modelo": "por definir"}], "jefe": {"nombre": "Jarvis Trading", "modelo": "Opus", "tarea": "Junta a los agentes cada mañana a las 9, maneja la demo, te avisa por Telegram, actualiza esta oficina y respalda todo."}, "agente_lab": {"nombre": "Laboratorio", "modelo": "Opus", "agente": "laboratorio", "tarea": "Prueba estrategias nuevas: backtest, después 30 días de demo, y solo con tu OK pasan a dinero real.", "reporte": []}, "laboratorio": [{"nombre": "Voto de tendencia (cripto)", "etapa": "live", "dato": "Examen sorpresa: 19 %/año, peor caída −21 %"}, {"nombre": "Media 150 días (ETFs)", "etapa": "live", "dato": "Examen sorpresa: 9 %/año, peor caída −15 %"}, {"nombre": "Cruce de medias 20/100", "etapa": "reserva", "dato": "Pasó el examen, no supera a las elegidas"}, {"nombre": "Momentum 90 días", "etapa": "reserva", "dato": "Pasó el examen, no supera a las elegidas"}, {"nombre": "Tortugas (Donchian)", "etapa": "reserva", "dato": "Pasó el examen, más débil"}, {"nombre": "ETFs de materias primas", "etapa": "cola", "dato": "Ronda 3, cuando digas"}, {"nombre": "Retroceso en tendencia", "etapa": "rechazada", "dato": "Empató en cero en el examen"}, {"nombre": "Ruptura tras calma", "etapa": "rechazada", "dato": "Gana mucho menos que aguantar"}, {"nombre": "Price action de Romano (8 versiones)", "etapa": "rechazada", "dato": "Pierde en todas"}, {"nombre": "Intradía (5 tipos)", "etapa": "rechazada", "dato": "Pierden después de comisiones"}], "conexiones": [{"nombre": "Telegram @Tradingsito_bot", "estado": "ok", "que": "Aviso diario 9 AM"}, {"nombre": "Alpaca Paper", "estado": "espera", "que": "Falta pegar las claves para que opere solo"}, {"nombre": "Jarvis (París Crepes)", "estado": "pendiente", "que": "Por el buzón compartido"}, {"nombre": "Fábrica de videos", "estado": "pendiente", "que": "Se conecta cuando arranque el canal"}], "campus": [{"area": "trading", "nombre": "Trading", "jefe": "Jarvis Trading", "modelo": "Opus", "estado": "ok", "publico": "Demo día 14 de 30. 0 órdenes hoy. 2 de 16 activos adentro. Revisión 2026-11-20.", "actualizado": "2026-11-03 03:50 PM", "oficina": "", "te_necesita": true}, {"area": "paris-crepes", "nombre": "París Crepes", "jefe": "Jarvis París Crepes", "modelo": "Opus 5.5", "estado": "atencion", "publico": "El kiosco sigue vendiendo todos los días. Esta semana toca el reporte mensual al mall y ponerse al día con papeles del negocio.", "actualizado": "2026-11-03 15:00", "oficina": {"hoy": ["Revisé los dos buzones de correo", "Detecté un login nuevo en Instagram", "Llegaron los reportes de ventas del fin de semana", "Programé el resumen de las elecciones para esta noche"], "pendientes": ["Cargar ventas desde el 27 oct", "Reporte mensual al mall", "Nómina de la semana", "Seguro y papeles del negocio"], "equipo": 2}, "te_necesita": true}, {"area": "contenido", "nombre": "Contenido", "jefe": "Jarvis Contenido", "modelo": "Claude Opus 5.5", "estado": "ok", "publico": "Canal 'EE.UU. sin manual' en marcha en TikTok, Instagram y YouTube. Primer video publicado hoy. La fábrica hace un video nuevo cada mañana.", "actualizado": "2026-11-03 15:45", "oficina": {"hoy": ["Se publicó el primer video en las 3 redes", "La fábrica hizo sola el video #3", "Bios y enlaces del perfil listos", "Mudanza a carpeta propia"], "pendientes": ["Video de respuesta del #1", "Revisar estadísticas el jueves", "Subir los videos #2 y #3"], "fila": {"guion": 0, "grabando": 0, "listo": 2, "publicado": 1}, "ultimo_video": "¿Por qué los autobuses escolares son amarillos?"}, "te_necesita": true}, {"area": "automatizaciones", "nombre": "Web y Automatizaciones", "jefe": "Jarvis Automatizaciones", "modelo": "Opus 5.5", "estado": "ok", "publico": "Tienda web de perfumes funcionando con bot de Telegram, catálogo de Facebook sincronizado y respuestas automáticas en Messenger. Proyecto de electrodomésticos esperando al cliente.", "actualizado": "2026-11-03 12:00", "oficina": {"hoy": ["Catálogo de Facebook conectado a la hoja de inventario (se actualiza cada hora)", "Respuestas automáticas de Messenger activas", "Explicado a cliente qué se actualiza solo y qué va a mano"], "pendientes": ["Logo y portada de la página", "Mostrar productos en la página de Facebook", "Compra de prueba", "Arrancar proyecto de electrodomésticos cuando el cliente confirme"], "proyectos": [{"tipo": "tienda de perfumes", "estado": "entregado"}, {"tipo": "venta de electrodomésticos", "estado": "esperando cliente"}]}, "te_necesita": true}, {"area": "dropshipping", "nombre": "Dropshipping", "jefe": "Jarvis Dropshipping", "modelo": "Opus", "estado": "construccion", "publico": "En construcción. La investigación está guardada; se retoma cuando las otras patas estén andando.", "actualizado": "2026-11-03 (pausado por Romano)", "oficina": "", "te_necesita": false}]};
 render(DATA);
 const hoy = new Date().toLocaleDateString("en-CA");
 if (!DATA.actualizado.startsWith(hoy)) $("#stamp").textContent = "⚠ datos del " + DATA.actualizado.slice(5, 10);
