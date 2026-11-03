@@ -156,7 +156,9 @@ function abrir(tipo, extra) {
     <div class="chips"><span class="chip">Modelo <b>${esc(p.modelo)}</b></span><span class="chip">Estado <b>${t[1]}</b></span><span class="chip">Reporta a <b>Jarvis Central</b></span></div>
     <p>${esc(p.publico)}</p>${p.necesita_de_romano ? `<div class="strat"><b>Te necesita</b><span>${esc(p.necesita_de_romano)}</span></div>` : ""}
     <span class="nota">Parte del día · ${esc(p.actualizado)}</span>
-    ${p.area === "trading" ? `<button class="boton" type="button" onclick="irA('trading')">Entrar a la oficina de Trading →</button>` : ""}`; }
+    ${(p.oficina && p.oficina.hoy || []).length ? `<span class="eyebrow">Hoy</span><div class="rows">${p.oficina.hoy.map(l => `<div class="strat"><span>${esc(l)}</span></div>`).join("")}</div>` : ""}
+    ${(p.oficina && p.oficina.pendientes || []).length ? `<span class="eyebrow">Lo que sigue</span><div class="rows">${p.oficina.pendientes.map(l => `<div class="strat"><span>${esc(l)}</span></div>`).join("")}</div>` : ""}
+    ${CENTROS && CENTROS[p.area] && ZONA !== p.area ? `<button class="boton" type="button" onclick="irA('${p.area}')">Entrar a la oficina →</button>` : ""}`; }
   if (tipo === "lab") { const a = d.agente_lab || {}; h = `<span class="eyebrow">Laboratorio · agente</span><h2><span class="led on"></span>${esc(a.nombre)}</h2>${ficha(a)}
     <p>${esc(a.tarea || "")}</p>${(a.reporte || []).length ? `<div class="rows">${a.reporte.map(l => `<div class="strat"><span>${esc(l)}</span></div>`).join("")}</div>` : `<p>Sin pruebas nuevas hoy. En cola: ${esc((d.laboratorio.find(s => s.etapa === "cola") || {}).nombre || "nada")}.</p>`}`; }
   $("#hojaIn").innerHTML = h; $("#hoja").classList.add("abierta");
@@ -238,7 +240,7 @@ function construir(d) {
   function pixeles(c) {
     if (texturas[c]) return texturas[c];
     const cv = document.createElement("canvas"); cv.width = cv.height = 16; const g = cv.getContext("2d"), base = new THREE.Color(c);
-    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { g.fillStyle = "#" + base.clone().multiplyScalar(.84 + azar() * .26).getHexString(); g.fillRect(x, y, 1, 1); }
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { g.fillStyle = "#" + base.clone().multiplyScalar(.84 + azar() * .16).getHexString(); g.fillRect(x, y, 1, 1); }
     const t = new THREE.CanvasTexture(cv); t.magFilter = t.minFilter = THREE.NearestFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.encoding = THREE.sRGBEncoding;
     return texturas[c] = t;
   }
@@ -519,11 +521,84 @@ function construir(d) {
   [[-4.5, 4.5], [4.5, 4.5], [-4.5, -5.5], [4.5, -5.5], [-21, -15], [21, -15], [-21, 15], [21, 15], [-3, -15.5], [6, 15.5], [-21, 0], [21, 2]]
     .forEach(([a, b], i) => arbol(C0.x + a, C0.z + b, 2 + (i % 3) * .5));
   for (let i = 0; i < 18; i++) caja(1, .35, 1, ["#e8d44d", "#e05a5a", "#ffffff"][i % 3], C0.x - 20 + azar() * 40, 0, C0.z + (azar() < .5 ? -1 : 1) * (12.5 + azar() * 3));  // flores
+  /* ---------- oficinas por dentro de cada área (datos del parte del día) ---------- */
+  const parte = a => (d.campus || []).find(p => p.area === a) || {area: a, nombre: a, jefe: "Jarvis", modelo: "—", estado: "atencion", publico: ""};
+  function pizarra(titulo, lineas, x, y, z, w = 6, h = 3.6, rotY = 0) {
+    const cv = document.createElement("canvas"); cv.width = 640; cv.height = Math.round(640 * h / w); const g = cv.getContext("2d");
+    g.fillStyle = "#1f3b2c"; g.fillRect(0, 0, cv.width, cv.height); g.strokeStyle = "#8a5a3b"; g.lineWidth = 16; g.strokeRect(0, 0, cv.width, cv.height);
+    g.fillStyle = "#ffe08a"; g.font = "bold 34px Silkscreen, monospace"; g.fillText(titulo.toUpperCase(), 28, 58);
+    g.fillStyle = "#f4f0e8"; g.font = "26px Silkscreen, monospace";
+    let yy = 104; lineas.slice(0, 8).forEach(l => { const pal = String(l).split(" "); let fila = "• ";
+      pal.forEach(p => { if (g.measureText(fila + p).width > cv.width - 56) { g.fillText(fila, 28, yy); yy += 34; fila = "  "; } fila += p + " "; });
+      g.fillText(fila, 28, yy); yy += 42; });
+    const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({map: t})); m.position.set(x, y, z); m.rotation.y = rotY; scene.add(m); return m;
+  }
+  function cuarto(c, piso, pared) {  // piso + paredes de atrás e izquierda (corte de maqueta)
+    caja(26, .4, 20, "#7d7d7d", c.x, -.4, c.z); caja(25, .06, 19, piso, c.x, 0, c.z);
+    caja(25.4, 3.2, .3, pared, c.x, 0, c.z - 9.65); caja(.3, 3.2, 19, pared, c.x - 12.65, 0, c.z);
+    caja(25.4, .5, .3, pared, c.x, 0, c.z + 9.65); caja(.3, .5, 19, pared, c.x + 12.65, 0, c.z);
+  }
+  function jefeDe(p, c, x, z, ropa) {
+    const j = persona({ropa, piel: "#f1cfae", pelo: "#2a1f1a", x: c.x + x, z: c.z + z, rot: .4}); const fn = () => abrir("area", p);
+    marcar(j, fn); etiqueta(`<i class="${p.estado === "ok" ? "on" : "wait"}"></i>${esc(p.jefe)} · ${esc(p.modelo)}`, {g: j, y: 1.95}, fn, "fija"); return j;
+  }
+  const deambula = (g, c, x0, x1, z0, z1) => caminantes.push({g, x0: c.x + x0, x1: c.x + x1, z0: c.z + z0, z1: c.z + z1, dest: null, pausa: azar() * 3});
+
+  // 🥞 París Crepes: mostrador, planchas, clientes
+  CENTROS["paris-crepes"] = new THREE.Vector3(280, 0, 0); construyendo = "paris-crepes";
+  { const c = CENTROS["paris-crepes"], p = parte("paris-crepes"), o = p.oficina || {};
+    cuarto(c, "#c9a37c", "#f3e6d3");
+    caja(12, 1.1, 1.2, "#8a5a3b", c.x - 2, 0, c.z - 1); caja(12.4, .12, 1.4, "#f1ece4", c.x - 2, 1.1, c.z - 1);     // mostrador
+    caja(10, .9, 1.2, "#9e9e9e", c.x - 3, 0, c.z - 8.6);                                                          // mesada
+    [-6, -3, 0].forEach(dx => caja(1.6, .12, 1, "#2b2b2b", c.x + dx, .9, c.z - 8.6, {emissive: "#ff7a1a", emissiveIntensity: .25}));  // planchas
+    caja(1.6, 2.6, 1.2, "#dfe6ea", c.x + 4, 0, c.z - 8.8);                                                       // refri
+    pizarra("Menú del día · Jarvis", o.hoy || [p.publico || "Esperando el parte del día"], c.x - 3, 2.1, c.z - 9.45, 7, 2.4);
+    for (let i = 0; i < Math.max(1, Math.min(o.equipo || 1, 4)); i++) deambula(persona({ropa: "#d9668a", piel: pieles[i % 4], pelo: "#3a2418", x: c.x - 5 + i * 3, z: c.z - 4}), c, -8, 2, -7, -2.5);
+    [[-8, 5], [-3, 6], [2, 5]].forEach(([dx, dz]) => { caja(1.4, .9, 1.4, "#f6f0e6", c.x + dx, 0, c.z + dz); caja(.6, .5, .6, "#d9668a", c.x + dx - 1.2, 0, c.z + dz); caja(.6, .5, .6, "#d9668a", c.x + dx + 1.2, 0, c.z + dz); });
+    for (let i = 0; i < 3; i++) deambula(persona({ropa: ropas[i + 2], piel: pieles[(i + 1) % 4], x: c.x - 6 + i * 3, z: c.z + 2}), c, -10, 4, 1, 8);
+    caja(1.4, .9, 1.4, "#8a5a3b", c.x + 8, 0, c.z + 4); caja(.6, .05, .4, "#22202a", c.x + 8, .9, c.z + 4);        // mesa de Jarvis + laptop
+    jefeDe(p, c, 8, 5.2, "#2b2b33");
+    planta(c.x + 11.5, c.z - 8.5); planta(c.x - 11.5, c.z + 8.5);
+    etiqueta("París Crepes", new THREE.Vector3(c.x - 2, 3.6, c.z - 9.4), () => abrir("area", p), "sala"); }
+
+  // 🎬 Contenido: estudio con pantalla verde, cámara, luces, edición y la fila de videos
+  CENTROS["contenido"] = new THREE.Vector3(420, 0, 0); construyendo = "contenido";
+  { const c = CENTROS["contenido"], p = parte("contenido"), o = p.oficina || {}, f = o.fila || {};
+    cuarto(c, "#3a3a44", "#2b2b33");
+    caja(8, 3, .2, "#3fbf5f", c.x - 6, 0, c.z - 9.3); caja(8, .1, 4, "#3fbf5f", c.x - 6, .06, c.z - 7.3);          // pantalla verde
+    caja(.15, 1.4, .15, "#22202a", c.x - 6, 0, c.z - 2); caja(.7, .5, .9, "#22202a", c.x - 6, 1.4, c.z - 2);       // cámara
+    caja(.3, .2, .3, "#65f0ff", c.x - 6, 1.55, c.z - 2.5, {emissive: "#65f0ff", emissiveIntensity: .8});
+    [[-10, -4], [-2, -4]].forEach(([dx, dz]) => { caja(.12, 2.4, .12, "#22202a", c.x + dx, 0, c.z + dz); caja(.8, .6, .4, "#fff6c8", c.x + dx, 2.4, c.z + dz, {emissive: "#fff6c8", emissiveIntensity: .9}); });
+    escritorio(c.x + 6, c.z - 6, "#4a4458", "#7aa2ff"); escritorio(c.x + 9.4, c.z - 6, "#4a4458", "#ff6b9c"); silla(c.x + 6, c.z - 7.1);
+    const etapas = [["Guion", f.guion, "#ffb547"], ["Grabando", f.grabando, "#ff6b7a"], ["Listo", f.listo, "#8f80ff"], ["Publicado", f.publicado, "#3ddc97"]];
+    etapas.forEach(([nom, nn, col], i) => { const x = c.x - 3 + i * 4.2, z = c.z + 5;                            // la fila: una pila de cajas por etapa
+      caja(2.2, .1, 2.2, "#22202a", x, 0, z); for (let k = 0; k < Math.min(nn || 0, 8); k++) caja(1.2, .35, .8, col, x, .1 + k * .38, z);
+      etiqueta(`${nom} <em>${nn ?? "?"}</em>`, new THREE.Vector3(x, 1.2 + Math.min(nn || 0, 8) * .38, z), () => abrir("area", p), "sala"); });
+    pizarra("Último video", [o.ultimo_video || p.publico || "Esperando el parte del día"].concat(o.hoy || []), c.x + 6, 2.2, c.z - 9.45, 7, 2.4);
+    jefeDe(p, c, 6, -4.6, "#e0533d");
+    planta(c.x + 11.5, c.z + 8.5);
+    etiqueta("Estudio de Contenido", new THREE.Vector3(c.x - 6, 3.8, c.z - 9.4), () => abrir("area", p), "sala"); }
+
+  // 💻 Web y Automatizaciones: escritorios con código, servidor y tablero de proyectos
+  CENTROS["automatizaciones"] = new THREE.Vector3(560, 0, 0); construyendo = "automatizaciones";
+  { const c = CENTROS["automatizaciones"], p = parte("automatizaciones"), o = p.oficina || {};
+    cuarto(c, "#d7dbe4", "#e9eef2");
+    [[-7, -3], [-2, -3], [-7, 3], [-2, 3]].forEach(([dx, dz]) => { escritorio(c.x + dx, c.z + dz, "#f4f1ea", "#3ddc97"); silla(c.x + dx, c.z + dz - 1.1); });
+    const rack = caja(1.4, 3, 1.2, "#22202a", c.x + 10, 0, c.z - 8.4);
+    for (let i = 0; i < 6; i++) flotantes.push(caja(.18, .18, .05, i % 2 ? "#3ddc97" : "#65f0ff", c.x + 9.6 + (i % 3) * .3, .5 + Math.floor(i / 3) * 1.1, c.z - 7.78, {emissive: i % 2 ? "#3ddc97" : "#65f0ff", emissiveIntensity: 1.2}));
+    const proy = (o.proyectos || []).map(q => `${q.tipo}: ${q.estado}`);
+    pizarra("Proyectos", proy.length ? proy : [p.publico || "Esperando el parte del día"], c.x + 3, 2.1, c.z - 9.45, 7, 2.4);
+    sofa(c.x + 7, c.z + 6, "#2a9d8f"); planta(c.x - 11.5, c.z - 8.5); planta(c.x + 11.5, c.z + 8.5);
+    jefeDe(p, c, -2, 1.9, "#2a9d8f");
+    etiqueta("Web y Automatizaciones", new THREE.Vector3(c.x + 3, 3.6, c.z - 9.4), () => abrir("area", p), "sala"); }
   construyendo = "trading";
 
   irA = zona => {
-    ZONA = zona; target.copy(CENTROS[zona]); vista = innerWidth < 700 ? (zona === "campus" ? 1.35 : 1.15) : 1; tam(); ubicar();
+    ZONA = zona; target.copy(CENTROS[zona]); const chica = !(zona === "campus" || zona === "trading");  // las oficinas de área son más chicas: se ven más de cerca
+    vista = innerWidth < 700 ? (zona === "campus" ? 1.35 : chica ? 1.75 : 1.15) : (chica ? 1.45 : 1); tam(); ubicar();
     $("#nav").textContent = zona === "campus" ? "📈 Entrar a Trading" : "🏙️ Volver al campus";
+    $("#kpi").hidden = !(zona === "campus" || zona === "trading");
     $("#hoja").classList.remove("abierta");
   };
   $("#nav").onclick = () => irA(ZONA === "campus" ? "trading" : "campus");
@@ -587,7 +662,7 @@ function construir(d) {
 }
 
 const DATA = {
- "actualizado": "2026-11-03 02:51 PM",
+ "actualizado": "2026-11-03 02:57 PM",
  "demo": {
   "valor": 98905.84,
   "ganancia_pct": -1.09,
@@ -950,7 +1025,7 @@ const DATA = {
    "estado": "ok",
    "publico": "Demo día 14 de 30. 0 órdenes hoy. 2 de 16 activos adentro. Revisión 2026-11-20.",
    "necesita_de_romano": "Pegar las claves de Alpaca para que la demo opere sola",
-   "actualizado": "2026-11-03 02:51 PM"
+   "actualizado": "2026-11-03 02:57 PM"
   },
   {
    "area": "paris-crepes",
