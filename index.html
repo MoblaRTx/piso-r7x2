@@ -112,6 +112,7 @@ function abrir(tipo, extra) {
   const etapa = k => d.laboratorio.filter(s => s.etapa === k);
   const lista = arr => arr.length ? arr.map(s => `<div class="strat"><b>${esc(s.nombre)}</b><span>${esc(s.dato)}</span></div>`).join("") : `<p>Vacío por ahora.</p>`;
   const rev = new Date(dm.revision + "T12:00:00").toLocaleDateString("es", {day: "numeric", month: "long"});
+  const ficha = a => `<div class="chips"><span class="chip">Modelo <b>${esc(a.modelo || "—")}</b></span>${a.agente ? `<span class="chip">Carpeta <b>agentes/${esc(a.agente)}</b></span>` : ""}<span class="chip">Reporta a <b>Jarvis Trading</b></span></div>`;
   let h = "";
   if (tipo === "cuenta") h = `<span class="eyebrow">Pantalla de recepción · cuenta demo</span>
     <div><div class="big">${money(dm.valor)}</div><span class="${up ? "up" : "down"}" style="font-family:var(--mono)">${pct(dm.ganancia_pct)} desde el inicio</span></div>
@@ -120,15 +121,15 @@ function abrir(tipo, extra) {
     <span class="chip">Efectivo <b>${Math.round(dm.efectivo_pct)}%</b></span><span class="chip">Órdenes hoy <b>${dm.ordenes_hoy}</b></span></div>
     <span class="nota">Dinero de mentira. Puntos amarillos = días con compras o ventas.</span>`;
   if (tipo === "cripto") { const b = bot("cripto"); h = `<span class="eyebrow">Sala de bots · cripto</span>
-    <h2><span class="led ${led(b.estado)}"></span>${esc(b.nombre)}</h2><p>${esc(b.regla)} Hoy <b style="color:var(--text)">${cripto.filter(a => a.peso > 0).length} de ${cripto.length}</b> monedas adentro.</p>
+    <h2><span class="led ${led(b.estado)}"></span>${esc(b.nombre)}</h2>${ficha(b)}<p>${esc(b.regla)} Hoy <b style="color:var(--text)">${cripto.filter(a => a.peso > 0).length} de ${cripto.length}</b> monedas adentro.</p>
     <div class="rows">${cripto.map(a => `<div class="row"><span class="sym">${esc(a.sim)}</span><span class="pips" title="${a.votos} de 6 votos">${[0,1,2,3,4,5].map(k => `<i class="${k < a.votos ? "on" : ""}"></i>`).join("")}</span><span class="num ${a.peso > 0 ? "up" : ""}">${a.peso.toFixed(1)}%</span></div>`).join("")}</div>
     <span class="nota">Barras moradas = votos a favor (de 6). Número = parte de la cuenta.</span>`; }
   if (tipo === "etf") { const b = bot("etf"); h = `<span class="eyebrow">Sala de bots · fondos</span>
-    <h2><span class="led ${led(b.estado)}"></span>${esc(b.nombre)}</h2><p>${esc(b.regla)} Hoy <b style="color:var(--text)">${etfs.filter(a => a.dentro).length} de ${etfs.length}</b> fondos adentro.</p>
+    <h2><span class="led ${led(b.estado)}"></span>${esc(b.nombre)}</h2>${ficha(b)}<p>${esc(b.regla)} Hoy <b style="color:var(--text)">${etfs.filter(a => a.dentro).length} de ${etfs.length}</b> fondos adentro.</p>
     <div class="rows">${etfs.map(a => { const c = Math.max(-10, Math.min(10, a.dist)), w = Math.abs(c) * 5;
       return `<div class="row"><span class="sym">${esc(a.sim)}<small>${esc(a.nombre)}</small></span><span class="gauge"><i style="${c >= 0 ? `left:50%;width:${w}%;background:var(--up)` : `right:50%;width:${w}%;background:var(--down)`}"></i></span><span class="pill ${a.dentro ? "in" : ""}">${a.dentro ? "DENTRO" : "FUERA"}</span></div>`; }).join("")}</div>
     <span class="nota">La raya del medio es la línea de 150 días. Verde a la derecha = sobre la línea.</span>`; }
-  if (tipo === "ia") { const a = d.ias[extra] || {}; h = `<span class="eyebrow">Sala de IAs · escritorio libre</span><h2><span class="led"></span>${esc(a.nombre)}</h2><p>${esc(a.idea)}</p><p>Cuando la contratemos, compite contra los bots con dinero de mentira. Si gana, pasa por el laboratorio como cualquiera.</p>`; }
+  if (tipo === "ia") { const a = d.ias[extra] || {}; h = `<span class="eyebrow">Sala de IAs · escritorio libre</span><h2><span class="led"></span>${esc(a.nombre)}</h2>${ficha(a)}<p>${esc(a.idea)}</p><p>Cuando la contratemos, compite contra los bots con dinero de mentira. Si gana, pasa por el laboratorio como cualquiera.</p>`; }
   if (tipo === "etapa") { const nombres = {backtest: "Backtest · examen con el pasado", live: "Live test · 30 días en demo", real: "Dinero real · bóveda", rechazada: "Descartadas"};
     const arr = extra === "backtest" ? etapa("cola").concat(etapa("reserva"), etapa("backtest")) : etapa(extra);
     h = `<span class="eyebrow">Laboratorio</span><h2>${esc(nombres[extra])}</h2>
@@ -137,9 +138,11 @@ function abrir(tipo, extra) {
   if (tipo === "estrategia") h = `<span class="eyebrow">Laboratorio · ${esc(extra.etapa)}</span><h2>${esc(extra.nombre)}</h2><p>${esc(extra.dato)}</p>`;
   if (tipo === "con") { const c = d.conexiones[extra] || {}, t = {ok: ["on", "Conectado"], espera: ["wait", "Esperando"], pendiente: ["", "Por conectar"]}[c.estado] || ["", c.estado];
     h = `<span class="eyebrow">Recepción · conexiones</span><h2><span class="led ${t[0]}"></span>${esc(c.nombre)}</h2><p><b style="color:var(--text)">${t[1]}.</b> ${esc(c.que)}</p>`; }
-  if (tipo === "claude") h = `<span class="eyebrow">Gerencia</span><h2>Claude · gerente del piso</h2>
-    <p>Cada mañana a las 9 despierta a los bots, revisa qué hay que comprar o vender, te manda el Telegram y actualiza esta oficina.</p>
-    <p>No mueve dinero real. Eso pasa solo con tu ✅.</p>`;
+  if (tipo === "claude") { const j = d.jefe || {}; h = `<span class="eyebrow">Gerencia · jefe del piso</span><h2><span class="led on"></span>${esc(j.nombre || "Jarvis Trading")}</h2>
+    <div class="chips"><span class="chip">Modelo <b>${esc(j.modelo || "Opus")}</b></span><span class="chip">Reporta a <b>Jarvis Central</b></span></div>
+    <p>${esc(j.tarea || "")}</p><p>No mueve dinero real. Eso pasa solo con tu ✅.</p>`; }
+  if (tipo === "lab") { const a = d.agente_lab || {}; h = `<span class="eyebrow">Laboratorio · agente</span><h2><span class="led on"></span>${esc(a.nombre)}</h2>${ficha(a)}
+    <p>${esc(a.tarea || "")}</p>${(a.reporte || []).length ? `<div class="rows">${a.reporte.map(l => `<div class="strat"><span>${esc(l)}</span></div>`).join("")}</div>` : `<p>Sin pruebas nuevas hoy. En cola: ${esc((d.laboratorio.find(s => s.etapa === "cola") || {}).nombre || "nada")}.</p>`}`; }
   $("#hojaIn").innerHTML = h; $("#hoja").classList.add("abierta");
 }
 $("#cerrar").onclick = () => $("#hoja").classList.remove("abierta");
@@ -384,7 +387,14 @@ function construir(d) {
   const claude = persona({ropa: "#d97757", piel: "#f1cfae", pelo: "#5a3a28", x: -16, z: 0});
   caminantes.push({g: claude, x0: -18, x1: 18, z0: -.4, z1: .4, dest: null, pausa: 0, rapido: true});
   marcar(claude, () => abrir("claude"));
-  etiqueta(`<i class="on"></i>Claude · gerente`, {g: claude, y: 1.95}, () => abrir("claude"));
+  etiqueta(`<i class="on"></i>${esc((d.jefe || {}).nombre || "Jarvis Trading")} · ${esc((d.jefe || {}).modelo || "Opus")}`, {g: claude, y: 1.95}, () => abrir("claude"), "fija");
+
+  // agente Laboratorio: bata blanca, en el Backtest junto al pizarrón
+  if (d.agente_lab) {
+    const lab = persona({ropa: "#f4f4f4", piel: "#c68b5e", pelo: "#1d1d1d", x: -14, z: -12.4, rot: Math.PI / 5});
+    marcar(lab, () => abrir("lab"));
+    etiqueta(`<i class="on"></i>${esc(d.agente_lab.nombre)} · ${esc(d.agente_lab.modelo)}`, {g: lab, y: 1.95}, () => abrir("lab"), "fija");
+  }
 
   /* ---------- interacción: arrastrar, pellizcar, tocar ---------- */
   const ptrs = new Map(); let mov = 0, distIni = 0, zoomIni = 1;
@@ -442,7 +452,7 @@ function construir(d) {
 }
 
 const DATA = {
- "actualizado": "2026-11-03 02:33 PM",
+ "actualizado": "2026-11-03 02:35 PM",
  "demo": {
   "valor": 98905.84,
   "ganancia_pct": -1.09,
@@ -657,7 +667,20 @@ const DATA = {
    "parte": "50 % de la cuenta",
    "regla": "6 jueces votan si la tendencia es buena. Más votos = más dinero adentro.",
    "estado": "live",
-   "tipo": "cripto"
+   "tipo": "cripto",
+   "agente": "voto-cripto",
+   "modelo": "Haiku",
+   "reporte": [
+    "Adentro: ninguna moneda (0 de 8).\n",
+    "BTC: 3/6 votos → 0.0% de la cuenta\n",
+    "ETH: 2/6 votos → 0.0% de la cuenta\n",
+    "BNB: 2/6 votos → 0.0% de la cuenta\n",
+    "XRP: 1/6 votos → 0.0% de la cuenta\n",
+    "ADA: 0/6 votos → 0.0% de la cuenta\n",
+    "LTC: 2/6 votos → 0.0% de la cuenta\n",
+    "DOGE: 1/6 votos → 0.0% de la cuenta\n",
+    "SOL: 2/6 votos → 0.0% de la cuenta\n"
+   ]
   },
   {
    "id": "etf150",
@@ -666,21 +689,49 @@ const DATA = {
    "parte": "50 % de la cuenta",
    "regla": "Adentro si el precio está sobre su promedio de 150 días; afuera si está debajo.",
    "estado": "live",
-   "tipo": "etf"
+   "tipo": "etf",
+   "agente": "media-150",
+   "modelo": "Haiku",
+   "reporte": [
+    "Adentro: SPY, DIA (2 de 8).\n",
+    "SPY (S&P 500): DENTRO · precio $755.10 vs línea $744.70\n",
+    "QQQ (Nasdaq 100): FUERA · precio $685.61 vs línea $704.56\n",
+    "IWM (Empresas pequeñas): FUERA · precio $280.58 vs línea $285.12\n",
+    "DIA (Dow Jones): DENTRO · precio $517.55 vs línea $512.09\n",
+    "TLT (Bonos EE.UU.): FUERA · precio $81.19 vs línea $82.46\n",
+    "GLD (Oro): FUERA · precio $359.59 vs línea $398.08\n",
+    "EFA (Europa/Japón): FUERA · precio $103.14 vs línea $103.71\n",
+    "EEM (Emergentes): FUERA · precio $61.04 vs línea $65.39\n"
+   ]
   }
  ],
  "ias": [
   {
-   "nombre": "IA de noticias",
+   "nombre": "Noticias",
    "idea": "Lee titulares y decide. Solo dinero de mentira.",
-   "estado": "vacante"
+   "estado": "vacante",
+   "modelo": "Sonnet (previsto)",
+   "agente": "noticias"
   },
   {
    "nombre": "IA de gráficos",
    "idea": "Mira velas y patrones. Solo dinero de mentira.",
-   "estado": "vacante"
+   "estado": "vacante",
+   "modelo": "por definir"
   }
  ],
+ "jefe": {
+  "nombre": "Jarvis Trading",
+  "modelo": "Opus",
+  "tarea": "Junta a los agentes cada mañana a las 9, maneja la demo, te avisa por Telegram, actualiza esta oficina y respalda todo."
+ },
+ "agente_lab": {
+  "nombre": "Laboratorio",
+  "modelo": "Opus",
+  "agente": "laboratorio",
+  "tarea": "Prueba estrategias nuevas: backtest, después 30 días de demo, y solo con tu OK pasan a dinero real.",
+  "reporte": []
+ },
  "laboratorio": [
   {
    "nombre": "Voto de tendencia (cripto)",
