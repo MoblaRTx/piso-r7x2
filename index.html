@@ -1,214 +1,419 @@
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Floor"><meta name="theme-color" content="#0e0c15"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{height:100%}</style></head><body><title>Trading Floor</title>
-<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: pantallas completas que se deslizan en vertical (snap), riel de navegación a la derecha. Un solo look oscuro, a propósito. */
+/* Layout: oficina isométrica 3D a pantalla completa; barra arriba, etiquetas flotantes, hoja de detalle que sube desde abajo. Un solo look oscuro. */
 :root{
-  --ink:#0e0c15; --panel:#191622; --panel-2:#221e2e; --line:#2e2940;
-  --text:#f3efe7; --muted:#9d96ab; --amber:#ffb547; --violet:#8f80ff;
-  --up:#3ddc97; --down:#ff6b7a; --idle:#5b5570;
-  --display:"Unbounded","Arial Black",system-ui,sans-serif;
-  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
-  color-scheme:dark;
+  --ink:#121019; --panel:#1b1824ee; --panel-solid:#1b1824; --line:#332d45; --text:#f4f0e8; --muted:#a39cb2;
+  --amber:#ffb547; --violet:#8f80ff; --up:#3ddc97; --down:#ff6b7a; --idle:#6b6580;
+  --display:"Unbounded","Arial Black",system-ui,sans-serif; --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace; color-scheme:dark;
 }
-html,body{height:100%;margin:0;background:var(--ink);color:var(--text);font-family:var(--body);font-size:15px}
+html,body{height:100%;margin:0;background:var(--ink);color:var(--text);font-family:var(--body);overflow:hidden;-webkit-user-select:none;user-select:none}
 *{box-sizing:border-box}
-.feed{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;scroll-behavior:smooth;overscroll-behavior:contain}
-.slide{min-height:100%;scroll-snap-align:start;position:relative;display:flex;flex-direction:column;justify-content:center;gap:18px;
-  padding-block:72px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(56px,calc(env(safe-area-inset-right,0px) + 48px));overflow:hidden}
-.slide::before{content:"";position:absolute;inset:-20% -30% auto auto;width:80vmax;height:80vmax;border-radius:50%;
-  background:radial-gradient(closest-side,var(--glow,#ffb54722),transparent);pointer-events:none;z-index:0}
-.slide>*{position:relative;z-index:1;width:100%;max-width:620px;margin-inline:auto}
-.top{position:fixed;inset:0 0 auto;z-index:20;display:flex;justify-content:space-between;align-items:center;
-  padding-top:calc(env(safe-area-inset-top,0px) + 14px);padding-bottom:10px;
-  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
-  background:linear-gradient(var(--ink),#0e0c1500);pointer-events:none}
-.brand{font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:.14em;text-transform:uppercase}
-.brand b{color:var(--amber)}
-.stamp{font-family:var(--mono);font-size:11px;color:var(--muted)}
-.rail{position:fixed;right:calc(env(safe-area-inset-right,0px) + 12px);top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;gap:10px}
-.rail button{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--muted);
-  font-size:14px;display:grid;place-items:center;cursor:pointer;padding:0;transition:transform .2s,background .2s}
-.rail button[aria-current="true"]{background:var(--amber);color:var(--ink);border-color:var(--amber);transform:scale(1.15)}
-.rail button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-h2{font-family:var(--display);font-weight:700;font-size:clamp(26px,7vw,38px);line-height:1.05;margin:0;text-wrap:balance}
-.lede{color:var(--muted);margin:0;line-height:1.5;max-width:46ch}
-.big{font-family:var(--display);font-weight:800;font-size:clamp(46px,14vw,84px);line-height:.95;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.delta{font-family:var(--mono);font-weight:600;font-size:18px}
+#escena{position:fixed;inset:0;touch-action:none}
+#escena canvas{display:block}
+.top{position:fixed;inset:0 0 auto;z-index:5;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) max(14px,env(safe-area-inset-right,0px)) 10px max(14px,env(safe-area-inset-left,0px));pointer-events:none}
+.brand{font-family:var(--display);font-weight:800;font-size:12px;letter-spacing:.14em;text-transform:uppercase;line-height:1.6}
+.brand b{color:var(--amber)}.brand small{display:block;font-family:var(--mono);font-weight:400;letter-spacing:0;text-transform:none;color:var(--muted);font-size:10.5px}
+.kpi{pointer-events:auto;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 12px;text-align:right;backdrop-filter:blur(8px)}
+.kpi b{display:block;font-family:var(--display);font-size:18px;font-variant-numeric:tabular-nums}
+.kpi span{font-family:var(--mono);font-size:11px}
 .up{color:var(--up)}.down{color:var(--down)}
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{font-family:var(--mono);font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:6px 12px;color:var(--muted)}
-.chip b{color:var(--text);font-weight:600}
-.chart{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:12px}
-.chart svg{display:block;width:100%;height:auto}
-.prog{display:flex;align-items:center;gap:12px}
-.bar{flex:1;height:8px;border-radius:99px;background:var(--panel-2);overflow:hidden}
-.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--violet),var(--amber));border-radius:99px}
-.desk{display:flex;align-items:center;gap:10px}
-.led{width:12px;height:12px;border-radius:50%;background:var(--idle);flex:none}
-.led.on{background:var(--up);box-shadow:0 0 0 4px #3ddc9722;animation:pulse 2.2s ease-in-out infinite}
-.led.wait{background:var(--amber);box-shadow:0 0 0 4px #ffb54722}
-@keyframes pulse{50%{box-shadow:0 0 0 9px #3ddc9700}}
-.rows{display:grid;gap:8px}
-.row{display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
-.sym{font-family:var(--display);font-weight:700;font-size:14px}
-.sym small{display:block;font-family:var(--body);font-weight:500;font-size:11px;color:var(--muted);margin-top:2px}
-.num{font-family:var(--mono);font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
-.pips{display:flex;gap:4px}.pips i{flex:1;max-width:22px;height:10px;border-radius:3px;background:var(--panel-2)}
-.pips i.on{background:var(--violet)}
-.gauge{position:relative;height:10px;border-radius:99px;background:var(--panel-2)}
-.gauge::after{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:var(--muted);border-radius:2px}
+#etiquetas{position:fixed;inset:0;pointer-events:none;z-index:3}
+.tag{position:absolute;transform:translate(-50%,-100%);white-space:nowrap;pointer-events:auto;cursor:pointer;
+  font-size:11px;font-weight:600;background:#15131cdd;color:var(--text);border:1px solid #ffffff22;border-radius:99px;padding:3px 8px 3px 6px;display:flex;align-items:center;gap:5px}
+.tag i{width:7px;height:7px;border-radius:50%;background:var(--idle);flex:none}
+.tag i.on{background:var(--up);box-shadow:0 0 6px var(--up)}.tag i.wait{background:var(--amber)}.tag i.off{background:var(--down)}
+.tag.sala{font-family:var(--mono);font-weight:600;font-size:10.5px;background:#f4f0e8;color:#15131c;border:0;padding:4px 9px;letter-spacing:.02em}
+.tag.sala em{font-style:normal;background:#15131c;color:#f4f0e8;border-radius:99px;padding:0 6px;margin-left:2px}
+.tag.lejos{opacity:0;pointer-events:none}
+.hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:4;
+  font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:7px 14px;pointer-events:none;transition:opacity .4s}
+.hoja{position:fixed;left:0;right:0;bottom:0;z-index:10;max-height:72%;overflow-y:auto;background:var(--panel-solid);border-top:1px solid var(--line);
+  border-radius:22px 22px 0 0;padding:10px max(18px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 22px) max(18px,env(safe-area-inset-left,0px));
+  transform:translateY(105%);transition:transform .32s cubic-bezier(.2,.8,.2,1);box-shadow:0 -20px 50px #0008}
+.hoja.abierta{transform:none}
+.hoja .asa{width:42px;height:5px;border-radius:9px;background:var(--line);margin:0 auto 12px}
+.hoja .cerrar{position:absolute;right:max(14px,env(safe-area-inset-right,0px));top:12px;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font-size:16px;cursor:pointer}
+.hoja .cerrar:focus-visible{outline:2px solid var(--amber)}
+.hoja-in{max-width:560px;margin:0 auto;display:grid;gap:12px}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hoja h2{font-family:var(--display);font-size:22px;line-height:1.1;margin:0;text-wrap:balance;display:flex;align-items:center;gap:10px}
+.hoja p{margin:0;color:var(--muted);line-height:1.5}
+.big{font-family:var(--display);font-weight:800;font-size:40px;line-height:1;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--mono);font-size:11.5px;background:#25212f;border:1px solid var(--line);border-radius:99px;padding:5px 10px;color:var(--muted)}
+.chip b{color:var(--text)}
+.led{width:11px;height:11px;border-radius:50%;background:var(--idle);flex:none}.led.on{background:var(--up);box-shadow:0 0 8px var(--up)}.led.wait{background:var(--amber)}
+.rows{display:grid;gap:6px}
+.row{display:grid;grid-template-columns:62px 1fr auto;align-items:center;gap:10px;background:#221e2c;border-radius:12px;padding:8px 12px}
+.sym{font-family:var(--display);font-size:13px}.sym small{display:block;font-family:var(--body);font-size:10.5px;color:var(--muted)}
+.num{font-family:var(--mono);font-size:12.5px;text-align:right;font-variant-numeric:tabular-nums}
+.pips{display:flex;gap:3px}.pips i{flex:1;max-width:20px;height:9px;border-radius:3px;background:#332d45}.pips i.on{background:var(--violet)}
+.gauge{position:relative;height:9px;border-radius:99px;background:#332d45}
+.gauge::after{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;background:var(--muted)}
 .gauge i{position:absolute;top:0;bottom:0;border-radius:99px}
-.tag{font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px;background:var(--panel-2);color:var(--muted)}
-.tag.in{background:#3ddc9726;color:var(--up)}
-.vacant{border:1.5px dashed var(--line);border-radius:18px;padding:18px;display:grid;gap:6px}
-.vacant h3,.door h3{font-family:var(--display);font-size:16px;margin:0}
-.vacant p{margin:0;color:var(--muted)}
-.doors{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.door{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;display:grid;gap:4px;align-content:start}
-.door .n{font-family:var(--display);font-weight:800;font-size:28px}
-.door span{font-size:12px;color:var(--muted)}
-.door.hot{border-color:var(--up)}
-.stack{display:grid;gap:8px}
-.strat{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:baseline;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
-.strat .dot{width:8px;height:8px;border-radius:50%}
-.strat b{font-weight:600}.strat span{grid-column:2;color:var(--muted);font-size:12px}
-.strat.out{opacity:.55}
-.con{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
-.con b{display:block}.con span{color:var(--muted);font-size:13px}
-.hint{font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
-.hint i{display:inline-block;animation:bob 1.6s ease-in-out infinite;font-style:normal}
-@keyframes bob{50%{transform:translateY(5px)}}
-.foot{font-size:11px;color:var(--muted)}
-.empty{display:grid;gap:10px;place-items:start}
-@media (max-width:420px){.row{grid-template-columns:54px 1fr auto;padding:9px 12px}.doors{gap:6px}.door{padding:10px}}
-@media (prefers-reduced-motion:reduce){.feed{scroll-behavior:auto}.led.on,.hint i{animation:none}}
+.pill{font-family:var(--mono);font-size:10.5px;font-weight:600;padding:3px 7px;border-radius:99px;background:#332d45;color:var(--muted)}.pill.in{background:#3ddc9726;color:var(--up)}
+.strat{background:#221e2c;border-radius:12px;padding:9px 12px}.strat b{display:block}.strat span{color:var(--muted);font-size:12.5px}
+.chart svg{display:block;width:100%;height:auto}
+.nota{font-size:11px;color:var(--muted)}
+.carga{position:fixed;inset:0;display:grid;place-items:center;z-index:20;background:var(--ink);font-family:var(--mono);color:var(--muted);transition:opacity .5s}
+@media (prefers-reduced-motion:reduce){.hoja{transition:none}}
 </style>
 
-<header class="top"><span class="brand">Trading <b>Floor</b></span><span class="stamp" id="stamp">conectando…</span></header>
-<nav class="rail" id="rail" aria-label="Pantallas"></nav>
-<main class="feed" id="feed">
-  <section class="slide" style="--glow:#ffb54722">
-    <div class="empty" id="estado">
-      <span class="eyebrow">Agencia de bots · demo</span>
-      <h2>Abriendo el piso…</h2>
-      <p class="lede">Aquí aparecen la cuenta demo, los bots y el laboratorio. Los datos se actualizan solos cada mañana después de la señal de las 9.</p>
-    </div>
-  </section>
-</main>
+<div id="escena" aria-label="Oficina del Trading Floor en 3D. Toca a una persona o sala para ver sus datos."></div>
+<div id="etiquetas"></div>
+<header class="top">
+  <div class="brand">Trading <b>Floor</b><small id="stamp">abriendo…</small></div>
+  <button class="kpi" id="kpi" type="button"><b id="kpiValor">—</b><span id="kpiDelta">demo</span></button>
+</header>
+<div class="hint" id="hint">Toca a cualquiera · arrastra para moverte</div>
+<section class="hoja" id="hoja" aria-live="polite"><div class="asa"></div><button class="cerrar" id="cerrar" type="button" aria-label="Cerrar">✕</button><div class="hoja-in" id="hojaIn"></div></section>
+<div class="carga" id="carga">Abriendo la oficina…</div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = v => "$" + Math.round(v).toLocaleString("en-US");
 const pct = v => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+const QUIETO = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-function showEmpty(title, text) {
-  $("#estado").innerHTML = `<span class="eyebrow">Agencia de bots · demo</span><h2>${esc(title)}</h2><p class="lede">${esc(text)}</p>`;
-}
-
-function chart(h) {
-  if (!h || h.length < 2) return `<p class="lede">El gráfico aparece al segundo día.</p>`;
-  const W = 600, H = 220, L = 8, R = 8, T = 26, B = 28, base = 100000;
+/* ---------- gráfico (SVG) ---------- */
+function grafico(h) {
+  if (!h || h.length < 2) return "";
+  const W = 560, H = 190, L = 6, R = 6, T = 22, B = 24, base = 100000;
   const vals = h.map(d => d.v).concat(base);
-  let lo = Math.min(...vals), hi = Math.max(...vals);
-  const pad = Math.max((hi - lo) * .2, 250); lo -= pad; hi += pad;
-  const x = i => L + i * (W - L - R) / (h.length - 1);
-  const y = v => T + (hi - v) * (H - T - B) / (hi - lo);
+  let lo = Math.min(...vals), hi = Math.max(...vals); const pad = Math.max((hi - lo) * .2, 250); lo -= pad; hi += pad;
+  const x = i => L + i * (W - L - R) / (h.length - 1), y = v => T + (hi - v) * (H - T - B) / (hi - lo);
   const pts = h.map((d, i) => `${x(i).toFixed(1)},${y(d.v).toFixed(1)}`).join(" ");
-  const last = h[h.length - 1], col = last.v >= base ? "var(--up)" : "var(--down)";
-  const orders = h.map((d, i) => d.o ? `<circle cx="${x(i)}" cy="${y(d.v)}" r="4" fill="var(--amber)"><title>${esc(d.f)}: ${d.o} órdenes</title></circle>` : "").join("");
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Valor de la cuenta demo por día">
-    <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".35"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
-    <line x1="${L}" x2="${W - R}" y1="${y(base)}" y2="${y(base)}" stroke="var(--muted)" stroke-dasharray="4 5" opacity=".6"/>
-    <text x="${W - R}" y="${y(base) - 7}" text-anchor="end" fill="var(--muted)" font-family="JetBrains Mono,monospace" font-size="12">$100k inicio</text>
-    <polygon points="${x(0)},${H - B} ${pts} ${x(h.length - 1)},${H - B}" fill="url(#g)"/>
-    <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-    ${orders}
-    <circle cx="${x(h.length - 1)}" cy="${y(last.v)}" r="6" fill="${col}" stroke="var(--ink)" stroke-width="3"/>
-    <text x="${L}" y="${H - 8}" fill="var(--muted)" font-family="JetBrains Mono,monospace" font-size="12">${esc(h[0].f.slice(5))}</text>
-    <text x="${W - R}" y="${H - 8}" text-anchor="end" fill="var(--muted)" font-family="JetBrains Mono,monospace" font-size="12">${esc(last.f.slice(5))}</text>
-  </svg>`;
+  const u = h[h.length - 1], col = u.v >= base ? "#3ddc97" : "#ff6b7a";
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Valor de la demo por día">
+  <defs><linearGradient id="gg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".35"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+  <line x1="${L}" x2="${W - R}" y1="${y(base)}" y2="${y(base)}" stroke="#a39cb2" stroke-dasharray="4 5" opacity=".6"/>
+  <text x="${W - R}" y="${y(base) - 6}" text-anchor="end" fill="#a39cb2" font-family="JetBrains Mono,monospace" font-size="12">$100k inicio</text>
+  <polygon points="${x(0)},${H - B} ${pts} ${x(h.length - 1)},${H - B}" fill="url(#gg)"/>
+  <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="3" stroke-linejoin="round"/>
+  ${h.map((d, i) => d.o ? `<circle cx="${x(i)}" cy="${y(d.v)}" r="3.5" fill="#ffb547"/>` : "").join("")}
+  <circle cx="${x(h.length - 1)}" cy="${y(u.v)}" r="5.5" fill="${col}" stroke="#1b1824" stroke-width="3"/>
+  <text x="${L}" y="${H - 6}" fill="#a39cb2" font-family="JetBrains Mono,monospace" font-size="12">${esc(h[0].f.slice(5))}</text>
+  <text x="${W - R}" y="${H - 6}" text-anchor="end" fill="#a39cb2" font-family="JetBrains Mono,monospace" font-size="12">${esc(u.f.slice(5))}</text></svg>`;
 }
 
-function render(d) {
-  const dm = d.demo, up = dm.ganancia_pct >= 0;
+/* ---------- hoja de detalle ---------- */
+let D = null;
+function abrir(tipo, extra) {
+  const d = D, dm = d.demo, up = dm.ganancia_pct >= 0;
   const cripto = d.activos.filter(a => a.tipo === "cripto"), etfs = d.activos.filter(a => a.tipo === "etf");
-  const bot = id => d.bots.find(b => b.tipo === id) || {};
-  const ledOf = s => s === "live" ? "on" : s === "pausa" ? "wait" : "";
-  const day = Math.min(dm.dias, dm.dias_prueba);
+  const bot = t => d.bots.find(b => b.tipo === t) || {};
+  const led = s => s === "live" ? "on" : s === "pausa" ? "wait" : "";
+  const etapa = k => d.laboratorio.filter(s => s.etapa === k);
+  const lista = arr => arr.length ? arr.map(s => `<div class="strat"><b>${esc(s.nombre)}</b><span>${esc(s.dato)}</span></div>`).join("") : `<p>Vacío por ahora.</p>`;
   const rev = new Date(dm.revision + "T12:00:00").toLocaleDateString("es", {day: "numeric", month: "long"});
-  const stage = k => d.laboratorio.filter(s => s.etapa === k);
-  const colors = {live: "var(--up)", backtest: "var(--violet)", cola: "var(--amber)", reserva: "var(--muted)", rechazada: "var(--down)", real: "var(--up)"};
-  const strat = s => `<div class="strat ${s.etapa === "rechazada" ? "out" : ""}"><i class="dot" style="background:${colors[s.etapa]}"></i><b>${esc(s.nombre)}</b><span>${esc(s.dato)}</span></div>`;
-  const conState = {ok: ["on", "Conectado"], espera: ["wait", "Esperando"], pendiente: ["", "Por conectar"]};
+  let h = "";
+  if (tipo === "cuenta") h = `<span class="eyebrow">Pantalla de recepción · cuenta demo</span>
+    <div><div class="big">${money(dm.valor)}</div><span class="${up ? "up" : "down"}" style="font-family:var(--mono)">${pct(dm.ganancia_pct)} desde el inicio</span></div>
+    <div class="chart">${grafico(d.historial)}</div>
+    <div class="chips"><span class="chip">Día <b>${Math.min(dm.dias, dm.dias_prueba)}</b> de ${dm.dias_prueba}</span><span class="chip">Revisión <b>${esc(rev)}</b></span>
+    <span class="chip">Efectivo <b>${Math.round(dm.efectivo_pct)}%</b></span><span class="chip">Órdenes hoy <b>${dm.ordenes_hoy}</b></span></div>
+    <span class="nota">Dinero de mentira. Puntos amarillos = días con compras o ventas.</span>`;
+  if (tipo === "cripto") { const b = bot("cripto"); h = `<span class="eyebrow">Sala de bots · cripto</span>
+    <h2><span class="led ${led(b.estado)}"></span>${esc(b.nombre)}</h2><p>${esc(b.regla)} Hoy <b style="color:var(--text)">${cripto.filter(a => a.peso > 0).length} de ${cripto.length}</b> monedas adentro.</p>
+    <div class="rows">${cripto.map(a => `<div class="row"><span class="sym">${esc(a.sim)}</span><span class="pips" title="${a.votos} de 6 votos">${[0,1,2,3,4,5].map(k => `<i class="${k < a.votos ? "on" : ""}"></i>`).join("")}</span><span class="num ${a.peso > 0 ? "up" : ""}">${a.peso.toFixed(1)}%</span></div>`).join("")}</div>
+    <span class="nota">Barras moradas = votos a favor (de 6). Número = parte de la cuenta.</span>`; }
+  if (tipo === "etf") { const b = bot("etf"); h = `<span class="eyebrow">Sala de bots · fondos</span>
+    <h2><span class="led ${led(b.estado)}"></span>${esc(b.nombre)}</h2><p>${esc(b.regla)} Hoy <b style="color:var(--text)">${etfs.filter(a => a.dentro).length} de ${etfs.length}</b> fondos adentro.</p>
+    <div class="rows">${etfs.map(a => { const c = Math.max(-10, Math.min(10, a.dist)), w = Math.abs(c) * 5;
+      return `<div class="row"><span class="sym">${esc(a.sim)}<small>${esc(a.nombre)}</small></span><span class="gauge"><i style="${c >= 0 ? `left:50%;width:${w}%;background:var(--up)` : `right:50%;width:${w}%;background:var(--down)`}"></i></span><span class="pill ${a.dentro ? "in" : ""}">${a.dentro ? "DENTRO" : "FUERA"}</span></div>`; }).join("")}</div>
+    <span class="nota">La raya del medio es la línea de 150 días. Verde a la derecha = sobre la línea.</span>`; }
+  if (tipo === "ia") { const a = d.ias[extra] || {}; h = `<span class="eyebrow">Sala de IAs · escritorio libre</span><h2><span class="led"></span>${esc(a.nombre)}</h2><p>${esc(a.idea)}</p><p>Cuando la contratemos, compite contra los bots con dinero de mentira. Si gana, pasa por el laboratorio como cualquiera.</p>`; }
+  if (tipo === "etapa") { const nombres = {backtest: "Backtest · examen con el pasado", live: "Live test · 30 días en demo", real: "Dinero real · bóveda", rechazada: "Descartadas"};
+    const arr = extra === "backtest" ? etapa("cola").concat(etapa("reserva"), etapa("backtest")) : etapa(extra);
+    h = `<span class="eyebrow">Laboratorio</span><h2>${esc(nombres[extra])}</h2>
+    ${extra === "real" ? `<p>Nadie entra aquí sin 30 días buenos en demo y tu ✅ Aprobar.</p>` : ""}
+    <div class="rows">${lista(arr)}</div>`; }
+  if (tipo === "estrategia") h = `<span class="eyebrow">Laboratorio · ${esc(extra.etapa)}</span><h2>${esc(extra.nombre)}</h2><p>${esc(extra.dato)}</p>`;
+  if (tipo === "con") { const c = d.conexiones[extra] || {}, t = {ok: ["on", "Conectado"], espera: ["wait", "Esperando"], pendiente: ["", "Por conectar"]}[c.estado] || ["", c.estado];
+    h = `<span class="eyebrow">Recepción · conexiones</span><h2><span class="led ${t[0]}"></span>${esc(c.nombre)}</h2><p><b style="color:var(--text)">${t[1]}.</b> ${esc(c.que)}</p>`; }
+  if (tipo === "claude") h = `<span class="eyebrow">Gerencia</span><h2>Claude · gerente del piso</h2>
+    <p>Cada mañana a las 9 despierta a los bots, revisa qué hay que comprar o vender, te manda el Telegram y actualiza esta oficina.</p>
+    <p>No mueve dinero real. Eso pasa solo con tu ✅.</p>`;
+  $("#hojaIn").innerHTML = h; $("#hoja").classList.add("abierta");
+}
+$("#cerrar").onclick = () => $("#hoja").classList.remove("abierta");
+$("#kpi").onclick = () => D && abrir("cuenta");
 
-  const slides = [
-    {icon: "$", glow: up ? "#3ddc9722" : "#ff6b7a22", html: `
-      <span class="eyebrow">Cuenta demo · dinero de mentira</span>
-      <div><div class="big">${money(dm.valor)}</div><div class="delta ${up ? "up" : "down"}">${pct(dm.ganancia_pct)} desde el inicio</div></div>
-      <div class="chart">${chart(d.historial)}</div>
-      <div class="prog"><span class="chip">Día <b>${day}</b> de ${dm.dias_prueba}</span><div class="bar"><i style="width:${day / dm.dias_prueba * 100}%"></i></div></div>
-      <div class="chips"><span class="chip">Revisión <b>${esc(rev)}</b></span><span class="chip">Efectivo <b>${Math.round(dm.efectivo_pct)}%</b></span><span class="chip">Órdenes hoy <b>${dm.ordenes_hoy}</b></span></div>
-      <span class="hint"><i>↓</i> desliza para ver los bots</span>`},
-    {icon: "₿", glow: "#8f80ff26", html: `
-      <span class="eyebrow">Sala de bots · 1 de 2</span>
-      <div class="desk"><span class="led ${ledOf(bot("cripto").estado)}"></span><h2>${esc(bot("cripto").nombre)}</h2></div>
-      <p class="lede">${esc(bot("cripto").regla)} <b>${cripto.filter(a => a.peso > 0).length} de ${cripto.length}</b> monedas adentro hoy.</p>
-      <div class="rows">${cripto.map(a => `<div class="row"><span class="sym">${esc(a.sim)}</span>
-        <span class="pips" title="${a.votos} de 6 votos">${[0,1,2,3,4,5].map(k => `<i class="${k < a.votos ? "on" : ""}"></i>`).join("")}</span>
-        <span class="num ${a.peso > 0 ? "up" : ""}">${a.peso.toFixed(1)}%</span></div>`).join("")}</div>
-      <span class="foot">Barras moradas = votos a favor (de 6). Número = parte de la cuenta.</span>`},
-    {icon: "▤", glow: "#3ddc971f", html: `
-      <span class="eyebrow">Sala de bots · 2 de 2</span>
-      <div class="desk"><span class="led ${ledOf(bot("etf").estado)}"></span><h2>${esc(bot("etf").nombre)}</h2></div>
-      <p class="lede">${esc(bot("etf").regla)} <b>${etfs.filter(a => a.dentro).length} de ${etfs.length}</b> fondos adentro hoy.</p>
-      <div class="rows">${etfs.map(a => { const c = Math.max(-10, Math.min(10, a.dist)), w = Math.abs(c) * 5;
-        return `<div class="row"><span class="sym">${esc(a.sim)}<small>${esc(a.nombre)}</small></span>
-        <span class="gauge" title="${pct(a.dist)} contra su línea de 150 días"><i style="${c >= 0 ? `left:50%;width:${w}%;background:var(--up)` : `right:50%;width:${w}%;background:var(--down)`}"></i></span>
-        <span class="tag ${a.dentro ? "in" : ""}">${a.dentro ? "DENTRO" : "FUERA"}</span></div>`; }).join("")}</div>
-      <span class="foot">La raya del medio es la línea de 150 días. Verde a la derecha = sobre la línea.</span>`},
-    {icon: "✦", glow: "#ffb5471f", html: `
-      <span class="eyebrow">Sala de IAs · próximamente</span>
-      <h2>Escritorios libres</h2>
-      <p class="lede">Las IAs van a competir contra los bots, siempre con dinero de mentira primero.</p>
-      <div class="stack">${d.ias.map(a => `<div class="vacant"><div class="desk"><span class="led"></span><h3>${esc(a.nombre)}</h3></div><p>${esc(a.idea)}</p></div>`).join("")}</div>`},
-    {icon: "⚗", glow: "#8f80ff22", html: `
-      <span class="eyebrow">Laboratorio de estrategias</span>
-      <h2>Tres puertas antes del dinero real</h2>
-      <div class="doors">
-        <div class="door"><span>1 · Backtest</span><div class="n">${stage("backtest").length + stage("reserva").length + stage("live").length}</div><span>pasaron el examen</span></div>
-        <div class="door hot"><span>2 · Live test</span><div class="n">${stage("live").length}</div><span>en demo ahora</span></div>
-        <div class="door"><span>3 · Dinero real</span><div class="n">${stage("real").length}</div><span>solo con tu ✅</span></div>
-      </div>
-      <div class="stack">${["live", "real", "cola", "backtest", "reserva", "rechazada"].flatMap(stage).map(strat).join("")}</div>`},
-    {icon: "⇄", glow: "#3ddc971a", html: `
-      <span class="eyebrow">Recepción · conexiones</span>
-      <h2>El cable hacia los otros cerebros</h2>
-      <div class="stack">${d.conexiones.map(c => { const [l, t] = conState[c.estado] || ["", c.estado];
-        return `<div class="con"><span class="led ${l}"></span><div><b>${esc(c.nombre)}</b><span>${t} · ${esc(c.que)}</span></div></div>`; }).join("")}</div>
-      <span class="foot">Reglas probadas en el pasado. No es garantía ni asesoría. Tú decides.</span>`},
-  ];
-
-  const feed = $("#feed"), keep = feed.scrollTop;
-  feed.innerHTML = slides.map((s, i) => `<section class="slide" id="s${i}" style="--glow:${s.glow}">${s.html}</section>`).join("");
-  $("#rail").innerHTML = slides.map((s, i) => `<button type="button" data-i="${i}" aria-label="Pantalla ${i + 1}">${s.icon}</button>`).join("");
-  $("#rail").querySelectorAll("button").forEach(b => b.onclick = () => $("#s" + b.dataset.i).scrollIntoView());
-  feed.scrollTop = keep;
+/* ---------- la oficina ---------- */
+function render(d) {
+  if (!d) { $("#carga").textContent = "Todavía no hay datos. Llegan con la señal de las 9 AM."; return; }
+  D = d;
+  const dm = d.demo, up = dm.ganancia_pct >= 0;
+  $("#kpiValor").textContent = money(dm.valor);
+  $("#kpiDelta").textContent = `${pct(dm.ganancia_pct)} · día ${Math.min(dm.dias, dm.dias_prueba)}/${dm.dias_prueba}`;
+  $("#kpiDelta").className = up ? "up" : "down";
   $("#stamp").textContent = "act. " + d.actualizado.slice(5);
-  watchRail();
+  if (!window.THREE) { $("#carga").textContent = "No se pudo cargar el 3D. Revisa tu conexión."; return; }
+  construir(d);
+  $("#carga").style.opacity = 0; setTimeout(() => $("#carga").remove(), 600);
+  setTimeout(() => $("#hint").style.opacity = 0, 6000);
 }
 
-let io;
-function watchRail() {
-  io?.disconnect();
-  io = new IntersectionObserver(es => es.forEach(e => {
-    if (e.isIntersecting) document.querySelectorAll("#rail button").forEach(b => b.setAttribute("aria-current", b.dataset.i === e.target.id.slice(1)));
-  }), {root: $("#feed"), threshold: .55});
-  document.querySelectorAll(".slide").forEach(s => io.observe(s));
+function construir(d) {
+  const cont = $("#escena");
+  const renderer = new THREE.WebGLRenderer({antialias: true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  cont.appendChild(renderer.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color("#121019");
+
+  const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, -200, 400);
+  const target = new THREE.Vector3(0, 0, 0);
+  const dir = new THREE.Vector3(1, 1.05, 1).normalize();
+  function ubicar() { cam.position.copy(target).addScaledVector(dir, 80); cam.lookAt(target); }
+  let vista = innerWidth < 700 ? 1.5 : 1;  // en el celular arranca más cerca; se aleja pellizcando
+  function tam() {
+    const w = innerWidth, h = innerHeight, a = w / h;
+    const alto = a < 1 ? 54 / a : 32;
+    cam.left = -alto * a / 2; cam.right = alto * a / 2; cam.top = alto / 2; cam.bottom = -alto / 2;
+    cam.zoom = vista; cam.updateProjectionMatrix(); renderer.setSize(w, h);
+  }
+  ubicar(); tam(); addEventListener("resize", tam);
+
+  scene.add(new THREE.HemisphereLight("#fff6ea", "#3a3350", .75));
+  const sol = new THREE.DirectionalLight("#fff1dc", .85); sol.position.set(-14, 30, 18); sol.castShadow = true;
+  sol.shadow.mapSize.set(2048, 2048); Object.assign(sol.shadow.camera, {left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 80});
+  sol.shadow.bias = -.0005; scene.add(sol);
+
+  const mats = {};
+  const mat = (c, o = {}) => { const k = c + JSON.stringify(o); return mats[k] || (mats[k] = new THREE.MeshStandardMaterial(Object.assign({color: c, roughness: .85}, o))); };
+  const caja = (w, h, dd, c, x, y, z, o, padre = scene) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dd), mat(c, o)); m.position.set(x, y + h / 2, z); m.castShadow = m.receiveShadow = true; padre.add(m); return m; };
+  const cil = (r, h, c, x, y, z, padre = scene, seg = 14) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), mat(c)); m.position.set(x, y + h / 2, z); m.castShadow = true; padre.add(m); return m; };
+  const esfera = (r, c, x, y, z, padre = scene, o) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 14), mat(c, o)); m.position.set(x, y, z); m.castShadow = true; padre.add(m); return m; };
+
+  /* piso del edificio y salas */
+  caja(42, .4, 30, "#2a2536", 0, -.4, 0);
+  const salas = [
+    {n: "Recepción", x0: -20, x1: -6, z0: 1, z1: 14, c: "#c9a37c"},
+    {n: "Sala de Bots", x0: -6, x1: 8, z0: 1, z1: 14, c: "#4a3d8c"},
+    {n: "Sala de IAs", x0: 8, x1: 20, z0: 1, z1: 14, c: "#d7dbe4"},
+    {n: "Backtest", x0: -20, x1: -7, z0: -14, z1: -1, c: "#9fb4d6"},
+    {n: "Live test", x0: -7, x1: 6, z0: -14, z1: -1, c: "#2f7d5c"},
+    {n: "Dinero real", x0: 6, x1: 20, z0: -14, z1: -1, c: "#c9a246"},
+  ];
+  salas.forEach(s => caja(s.x1 - s.x0 - .1, .06, s.z1 - s.z0 - .1, s.c, (s.x0 + s.x1) / 2, 0, (s.z0 + s.z1) / 2));
+  caja(40, .05, 2, "#8d8798", 0, 0, 0); // pasillo
+
+  /* paredes: altas atrás e izquierda (corte tipo maqueta), vidrio entre salas */
+  const pared = "#ece6dc", vidrio = {color: "#bfe3ff", transparent: true, opacity: .22, roughness: .1};
+  caja(40.4, 3, .3, pared, 0, 0, -14.15); caja(.3, 3, 28.6, pared, -20.15, 0, 0);
+  caja(40.4, .5, .3, pared, 0, 0, 14.15); caja(.3, .5, 28.6, pared, 20.15, 0, 0);
+  const vid = (w, dd, x, z) => { const m = caja(w, 2.4, dd, "#bfe3ff", x, 0, z, vidrio); m.castShadow = false; caja(w, .08, dd, "#3b3550", x, 2.4, z); };
+  [[-6, 1, 14], [8, 1, 14]].forEach(([x, z0, z1]) => vid(.08, z1 - z0 - 3, x, (z0 + z1) / 2 + 1.5));
+  [[-7, -14, -1], [6, -14, -1]].forEach(([x, z0, z1]) => vid(.08, z1 - z0 - 3, x, (z0 + z1) / 2 - 1.5));
+  // pared de vidrio hacia el pasillo, con una puerta de 2 en el medio de cada sala
+  salas.forEach(s => { const z = s.z0 > 0 ? 1 : -1, m = (s.x0 + s.x1) / 2, a = m - 1 - s.x0, b = s.x1 - (m + 1);
+    vid(a, .08, s.x0 + a / 2, z); vid(b, .08, m + 1 + b / 2, z); });
+  // bóveda: reja dorada
+  for (let i = 0; i < 9; i++) cil(.05, 2.4, "#e0b84a", 6.6 + i * 1.5, 0, -1.05, scene, 6);
+
+  /* muebles */
+  function escritorio(x, z, color = "#e9e2d6", pantalla = "#2b2f3a", padre = scene) {
+    caja(2.2, .08, 1.1, color, x, .74, z, {}, padre);
+    [[-1, -.45], [1, -.45], [-1, .45], [1, .45]].forEach(([a, b]) => caja(.06, .74, .06, "#3b3550", x + a, 0, z + b, {}, padre));
+    caja(.9, .55, .06, "#22202a", x - .3, .82, z - .3, {}, padre);
+    const p = caja(.82, .45, .02, pantalla, x - .3, .87, z - .26, {emissive: pantalla, emissiveIntensity: .9}, padre);
+    caja(.5, .03, .2, "#3b3550", x + .45, .82, z + .05, {}, padre);
+    return p;
+  }
+  function silla(x, z, c = "#2b2733") { caja(.6, .08, .6, c, x, .45, z); caja(.6, .6, .08, c, x, .5, z - .3); cil(.05, .45, "#3b3550", x, 0, z); }
+  function planta(x, z, s = 1) { cil(.28 * s, .5 * s, "#d8cdbd", x, 0, z); esfera(.45 * s, "#4f9d58", x, .9 * s, z); esfera(.32 * s, "#6bbf6a", x + .2 * s, 1.25 * s, z - .1 * s); }
+  function sofa(x, z, c = "#4a4458") { caja(2.4, .45, .9, c, x, 0, z); caja(2.4, .5, .25, c, x, .45, z - .35); caja(.25, .35, .9, c, x - 1.1, .45, z); caja(.25, .35, .9, c, x + 1.1, .45, z); }
+
+  /* gente */
+  const caminantes = [], flotantes = [], clicables = [];
+  function persona({ropa = "#5b8def", piel = "#e8b98f", pelo = "#2a1f1a", x, z, rot = 0}) {
+    const g = new THREE.Group();
+    cil(.12, .55, "#2b2733", -.1, 0, 0, g, 8); cil(.12, .55, "#2b2733", .1, 0, 0, g, 8);
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(.24, .2, .62, 12), mat(ropa)); t.position.y = .86; t.castShadow = true; g.add(t);
+    esfera(.2, piel, 0, 1.36, 0, g); const p = esfera(.21, pelo, 0, 1.42, -.04, g); p.scale.set(1, .7, 1);
+    g.position.set(x, 0, z); g.rotation.y = rot; scene.add(g); return g;
+  }
+  function robot({x, z, color = "#8f80ff", estado = "live"}) {
+    const g = new THREE.Group();
+    caja(.5, .5, .36, "#d9d6e2", 0, .1, 0, {}, g); caja(.62, .6, .42, color, 0, .55, 0, {}, g);
+    caja(.48, .38, .4, "#e9e6f0", 0, 1.18, 0, {}, g);
+    caja(.36, .09, .02, "#65f0ff", 0, 1.32, .21, {emissive: "#65f0ff", emissiveIntensity: 1.2}, g);
+    cil(.02, .3, "#3b3550", 0, 1.56, 0, g, 6);
+    const ledc = estado === "live" ? "#3ddc97" : estado === "pausa" ? "#ffb547" : "#ff6b7a";
+    const led = esfera(.08, ledc, 0, 1.92, 0, g, {emissive: ledc, emissiveIntensity: 1.6});
+    g.position.set(x, 0, z); scene.add(g); return {g, led};
+  }
+
+  /* etiquetas HTML */
+  const etiquetas = [];
+  function etiqueta(html, pos, alClick, clase = "") {
+    const el = document.createElement("button"); el.type = "button"; el.className = "tag " + clase; el.innerHTML = html;
+    el.onclick = e => { e.stopPropagation(); alClick && alClick(); };
+    $("#etiquetas").appendChild(el); etiquetas.push({el, pos}); return el;
+  }
+  const marcar = (obj, fn) => obj.traverse(o => { if (o.isMesh) { o.userData.fn = fn; clicables.push(o); } });
+
+  /* ---- Recepción ---- */
+  caja(4.2, 1.1, .9, "#8a5a3b", -13, 0, 10.5); caja(4.4, .08, 1.1, "#f1ece4", -13, 1.1, 10.5);
+  persona({ropa: "#f0a35e", x: -13, z: 9.6, rot: Math.PI});
+  sofa(-17.5, 3.4); planta(-19.2, 13.2); planta(-7, 13.2, .9); planta(-19.2, 6, .8);
+  // pantalla grande con la cuenta
+  const lienzo = document.createElement("canvas"); lienzo.width = 640; lienzo.height = 360;
+  const cx = lienzo.getContext("2d");
+  cx.fillStyle = "#15131c"; cx.fillRect(0, 0, 640, 360);
+  cx.fillStyle = "#a39cb2"; cx.font = "600 24px JetBrains Mono, monospace"; cx.fillText("CUENTA DEMO", 32, 52);
+  cx.fillStyle = "#f4f0e8"; cx.font = "800 82px Unbounded, Arial Black, sans-serif"; cx.fillText(money(d.demo.valor), 28, 140);
+  cx.fillStyle = d.demo.ganancia_pct >= 0 ? "#3ddc97" : "#ff6b7a"; cx.font = "600 30px JetBrains Mono, monospace"; cx.fillText(pct(d.demo.ganancia_pct), 32, 186);
+  const hh = d.historial; if (hh.length > 1) { const vs = hh.map(q => q.v).concat(100000), lo = Math.min(...vs) - 150, hi = Math.max(...vs) + 150;
+    cx.strokeStyle = cx.fillStyle; cx.lineWidth = 6; cx.lineJoin = "round"; cx.beginPath();
+    hh.forEach((q, i) => { const px = 32 + i * 576 / (hh.length - 1), py = 330 - (q.v - lo) / (hi - lo) * 110; i ? cx.lineTo(px, py) : cx.moveTo(px, py); }); cx.stroke(); }
+  const tex = new THREE.CanvasTexture(lienzo); tex.encoding = THREE.sRGBEncoding;
+  const tele = new THREE.Group();
+  caja(4.4, 2.6, .16, "#22202a", 0, 1.2, 0, {}, tele);
+  const pant = new THREE.Mesh(new THREE.PlaneGeometry(4.15, 2.33), new THREE.MeshBasicMaterial({map: tex})); pant.position.set(0, 2.5, .09); tele.add(pant);
+  cil(.08, 1.2, "#3b3550", 0, 0, 0, tele); caja(1.4, .06, .8, "#3b3550", 0, 0, 0, {}, tele);
+  tele.position.set(-13, 0, 5.2); tele.rotation.y = .5; scene.add(tele); marcar(tele, () => abrir("cuenta"));
+  etiqueta(`<i class="on"></i>Cuenta demo`, new THREE.Vector3(-13, 4.2, 5.2), () => abrir("cuenta"), "fija");
+  // kioscos de conexiones
+  d.conexiones.forEach((c, i) => {
+    const x = -18.2 + i * 1.9, z = 8.6, col = {ok: "#3ddc97", espera: "#ffb547"}[c.estado] || "#6b6580";
+    const k = new THREE.Group(); caja(.8, 1.3, .5, "#f1ece4", 0, 0, 0, {}, k); caja(.66, .5, .04, "#22202a", 0, .7, .26, {emissive: col, emissiveIntensity: .35}, k);
+    esfera(.12, col, 0, 1.5, 0, k, {emissive: col, emissiveIntensity: 1.5}); k.position.set(x, 0, z); scene.add(k);
+    marcar(k, () => abrir("con", i));
+    etiqueta(`<i class="${c.estado === "ok" ? "on" : c.estado === "espera" ? "wait" : ""}"></i>${esc(c.nombre.split(" ")[0])}`, new THREE.Vector3(x, 2.1, z), () => abrir("con", i));
+  });
+
+  /* ---- Sala de Bots ---- */
+  const pantallaBot = (on) => on ? "#3ddc97" : "#5a5670";
+  const bc = d.bots.find(b => b.tipo === "cripto") || {}, be = d.bots.find(b => b.tipo === "etf") || {};
+  const criptoOn = d.activos.some(a => a.tipo === "cripto" && a.peso > 0), etfOn = d.activos.some(a => a.tipo === "etf" && a.dentro);
+  escritorio(-2.5, 6.5, "#e9e2d6", pantallaBot(criptoOn)); silla(-2.5, 5.4);
+  escritorio(3.5, 6.5, "#e9e2d6", pantallaBot(etfOn)); silla(3.5, 5.4);
+  const r1 = robot({x: -2.5, z: 5.2, color: "#8f80ff", estado: bc.estado}), r2 = robot({x: 3.5, z: 5.2, color: "#3ddc97", estado: be.estado});
+  marcar(r1.g, () => abrir("cripto")); marcar(r2.g, () => abrir("etf"));
+  flotantes.push(r1.led, r2.led);
+  etiqueta(`<i class="${bc.estado === "live" ? "on" : ""}"></i>${esc(bc.nombre || "Bot cripto")}`, new THREE.Vector3(-2.5, 2.6, 5.2), () => abrir("cripto"), "fija");
+  etiqueta(`<i class="${be.estado === "live" ? "on" : ""}"></i>${esc(be.nombre || "Bot fondos")}`, new THREE.Vector3(3.5, 2.6, 5.2), () => abrir("etf"), "fija");
+  escritorio(-2.5, 11, "#d6cfc3"); silla(-2.5, 9.9, "#3a3546"); escritorio(3.5, 11, "#d6cfc3"); silla(3.5, 9.9, "#3a3546");
+  planta(7, 13.2, .9); planta(-5, 2, .7);
+
+  /* ---- Sala de IAs ---- */
+  d.ias.forEach((a, i) => {
+    const x = 11 + i * 5, z = 6.5;
+    escritorio(x, z, "#f4f1ea"); silla(x, z - 1.1, "#5b5670");
+    const hit = caja(2.2, 2, 2, "#000", x, 0, z - .5, {transparent: true, opacity: 0}); hit.castShadow = false; marcar(hit, () => abrir("ia", i));
+    etiqueta(`<i></i>${esc(a.nombre)} · vacante`, new THREE.Vector3(x, 2.2, z - .4), () => abrir("ia", i));
+  });
+  planta(19.2, 13.2); planta(9, 2, .8); sofa(14, 11.5, "#6c6680");
+
+  /* ---- Laboratorio ---- */
+  const ropas = ["#5b8def", "#f06e9c", "#ffb547", "#46c3a0", "#a78bfa", "#ef8354", "#7dd3fc"];
+  const pieles = ["#e8b98f", "#c68b5e", "#f1cfae", "#8d5a3b"];
+  let n = 0;
+  function sembrar(lista, x0, x1, z0, z1, gris) {
+    lista.forEach((s, i) => {
+      const x = x0 + (i % 3 + .5) * (x1 - x0) / 3, z = z0 + (Math.floor(i / 3) + .6) * 2.6;
+      const p = persona({ropa: gris ? "#77738a" : ropas[n % ropas.length], piel: pieles[n++ % pieles.length], x, z, rot: Math.random() * 6});
+      if (!gris) caminantes.push({g: p, x0: x0 + .8, x1: x1 - .8, z0: z0 + .5, z1: z1 - .5, dest: null, pausa: Math.random() * 3});
+      marcar(p, () => abrir("estrategia", s));
+      etiqueta(`<i class="${s.etapa === "live" ? "on" : gris ? "off" : "wait"}"></i>${esc(s.nombre.replace(/ \(.*\)/, ""))}`, {g: p, y: 1.95}, () => abrir("estrategia", s));
+    });
+  }
+  const et = k => d.laboratorio.filter(s => s.etapa === k);
+  // Backtest: pizarrones + gente probando
+  caja(3, 1.6, .1, "#f8f6f0", -16, .8, -13.8); caja(3, 1.6, .1, "#f8f6f0", -11.5, .8, -13.8);
+  escritorio(-17, -10.5, "#e9e2d6", "#7aa2ff"); escritorio(-13, -10.5, "#e9e2d6", "#7aa2ff");
+  sembrar(et("cola").concat(et("reserva"), et("backtest")), -19.5, -7.5, -8.5, -2.5, false);
+  // descartados: banca gris en la esquina
+  caja(4, .45, .8, "#5a5466", -17.6, 0, -12.6);
+  sembrar(et("rechazada").slice(0, 4), -19.6, -15.4, -13.4, -12.2, true);
+  // Live test: escritorios con pantallas verdes
+  escritorio(-3.5, -9, "#e9e2d6", "#3ddc97"); escritorio(2, -9, "#e9e2d6", "#3ddc97");
+  sembrar(et("live"), -6.5, 5.5, -7.5, -2.5, false);
+  // Dinero real: caja fuerte
+  const boveda = new THREE.Group(); caja(2.6, 2.6, 2, "#5c5f68", 0, 0, 0, {metalness: .6, roughness: .35}, boveda);
+  cil(.55, .12, "#e0b84a", 0, 1.3, 1.02, boveda); boveda.children[boveda.children.length - 1].rotation.x = Math.PI / 2;
+  boveda.position.set(13, 0, -9); scene.add(boveda); marcar(boveda, () => abrir("etapa", "real"));
+  sembrar(et("real"), 7, 19, -6, -2.5, false);
+  planta(-7.6, -13.3, .8); planta(19.2, -13.3, .9); planta(5.4, -13.3, .7);
+
+  // carteles de salas
+  const cartel = (txt, num, x, z, fn) => etiqueta(`${esc(txt)}${num !== null ? ` <em>${num}</em>` : ""}`, new THREE.Vector3(x, 3.4, z), fn, "sala");
+  cartel("Recepción", null, -13, 13.2, () => abrir("cuenta"));
+  cartel("Sala de Bots", d.bots.length, 1, 13.2, () => abrir("cripto"));
+  cartel("Sala de IAs", 0, 14, 13.2, () => abrir("ia", 0));
+  cartel("Backtest", et("cola").length + et("reserva").length + et("backtest").length, -13.5, -13.6, () => abrir("etapa", "backtest"));
+  cartel("Live test", et("live").length, -.5, -13.6, () => abrir("etapa", "live"));
+  cartel("Dinero real", et("real").length, 13, -13.6, () => abrir("etapa", "real"));
+  cartel("Descartadas", et("rechazada").length, -17.6, -11, () => abrir("etapa", "rechazada"));
+
+  // Claude, el gerente, caminando por el pasillo
+  const claude = persona({ropa: "#d97757", piel: "#f1cfae", pelo: "#5a3a28", x: -16, z: 0});
+  caminantes.push({g: claude, x0: -18, x1: 18, z0: -.4, z1: .4, dest: null, pausa: 0, rapido: true});
+  marcar(claude, () => abrir("claude"));
+  etiqueta(`<i class="on"></i>Claude · gerente`, {g: claude, y: 1.95}, () => abrir("claude"));
+
+  /* ---------- interacción: arrastrar, pellizcar, tocar ---------- */
+  const ptrs = new Map(); let mov = 0, distIni = 0, zoomIni = 1;
+  const right = new THREE.Vector3(), upv = new THREE.Vector3();
+  const cv = renderer.domElement, ray = new THREE.Raycaster();
+  cv.addEventListener("pointerdown", e => { cv.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, {x: e.clientX, y: e.clientY}); mov = 0;
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; distIni = Math.hypot(a.x - b.x, a.y - b.y); zoomIni = vista; } });
+  cv.addEventListener("pointermove", e => {
+    const p = ptrs.get(e.pointerId); if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; mov += Math.abs(dx) + Math.abs(dy);
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; vista = Math.min(3.5, Math.max(.6, zoomIni * Math.hypot(a.x - b.x, a.y - b.y) / distIni)); tam(); return; }
+    const k = (cam.top - cam.bottom) / cam.zoom / innerHeight;
+    right.setFromMatrixColumn(cam.matrix, 0); upv.setFromMatrixColumn(cam.matrix, 1);
+    target.addScaledVector(right, -dx * k).addScaledVector(upv, dy * k);
+    target.y = 0; target.x = Math.max(-22, Math.min(22, target.x)); target.z = Math.max(-16, Math.min(16, target.z)); ubicar();
+  });
+  const soltar = e => {
+    if (ptrs.size === 1 && mov < 8) {
+      const m = new THREE.Vector2(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+      ray.setFromCamera(m, cam); const hit = ray.intersectObjects(clicables, false)[0];
+      if (hit) hit.object.userData.fn(); else $("#hoja").classList.remove("abierta");
+    }
+    ptrs.delete(e.pointerId);
+  };
+  cv.addEventListener("pointerup", soltar); cv.addEventListener("pointercancel", e => ptrs.delete(e.pointerId));
+  cv.addEventListener("wheel", e => { e.preventDefault(); vista = Math.min(3.5, Math.max(.6, vista * (e.deltaY < 0 ? 1.1 : .9))); tam(); }, {passive: false});
+
+  /* ---------- animación ---------- */
+  const v = new THREE.Vector3(); let t0 = performance.now();
+  function cuadro(t) {
+    const dt = Math.min((t - t0) / 1000, .05); t0 = t;
+    if (!QUIETO) {
+      caminantes.forEach(c => {
+        if (c.pausa > 0) { c.pausa -= dt; return; }
+        if (!c.dest) c.dest = new THREE.Vector3(c.x0 + Math.random() * (c.x1 - c.x0), 0, c.z0 + Math.random() * (c.z1 - c.z0));
+        const g = c.g, dx = c.dest.x - g.position.x, dz = c.dest.z - g.position.z, dist = Math.hypot(dx, dz), vel = (c.rapido ? 1.6 : .7) * dt;
+        if (dist < .05) { c.dest = null; c.pausa = 1.5 + Math.random() * 4; g.position.y = 0; return; }
+        g.position.x += dx / dist * Math.min(vel, dist); g.position.z += dz / dist * Math.min(vel, dist);
+        g.rotation.y = Math.atan2(dx, dz); g.position.y = Math.abs(Math.sin(t / 110)) * .06;
+      });
+      flotantes.forEach((l, i) => l.material.emissiveIntensity = 1.1 + Math.sin(t / 400 + i) * .6);
+    }
+    renderer.render(scene, cam);
+    const w = innerWidth, h = innerHeight;
+    etiquetas.forEach(e => {
+      if (e.pos.g) v.copy(e.pos.g.position).setY(e.pos.y); else v.copy(e.pos);
+      v.project(cam);
+      e.el.style.left = ((v.x + 1) / 2 * w).toFixed(1) + "px"; e.el.style.top = ((1 - v.y) / 2 * h).toFixed(1) + "px";
+      // en el celular, los nombres de cada persona aparecen al acercarse (pellizcar); las salas siempre
+      e.el.classList.toggle("lejos", !e.el.classList.contains("sala") && !e.el.classList.contains("fija") && vista < (w < 700 ? 1.4 : .8));
+    });
+    requestAnimationFrame(cuadro);
+  }
+  requestAnimationFrame(cuadro);
 }
 
 const DATA = {
