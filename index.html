@@ -1,0 +1,533 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Floor"><meta name="theme-color" content="#0e0c15"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html,body{height:100%}</style></head><body><title>Trading Floor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: pantallas completas que se deslizan en vertical (snap), riel de navegación a la derecha. Un solo look oscuro, a propósito. */
+:root{
+  --ink:#0e0c15; --panel:#191622; --panel-2:#221e2e; --line:#2e2940;
+  --text:#f3efe7; --muted:#9d96ab; --amber:#ffb547; --violet:#8f80ff;
+  --up:#3ddc97; --down:#ff6b7a; --idle:#5b5570;
+  --display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;background:var(--ink);color:var(--text);font-family:var(--body);font-size:15px}
+*{box-sizing:border-box}
+.feed{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;scroll-behavior:smooth;overscroll-behavior:contain}
+.slide{min-height:100%;scroll-snap-align:start;position:relative;display:flex;flex-direction:column;justify-content:center;gap:18px;
+  padding-block:72px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(56px,calc(env(safe-area-inset-right,0px) + 48px));overflow:hidden}
+.slide::before{content:"";position:absolute;inset:-20% -30% auto auto;width:80vmax;height:80vmax;border-radius:50%;
+  background:radial-gradient(closest-side,var(--glow,#ffb54722),transparent);pointer-events:none;z-index:0}
+.slide>*{position:relative;z-index:1;width:100%;max-width:620px;margin-inline:auto}
+.top{position:fixed;inset:0 0 auto;z-index:20;display:flex;justify-content:space-between;align-items:center;
+  padding-top:calc(env(safe-area-inset-top,0px) + 14px);padding-bottom:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:linear-gradient(var(--ink),#0e0c1500);pointer-events:none}
+.brand{font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:.14em;text-transform:uppercase}
+.brand b{color:var(--amber)}
+.stamp{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.rail{position:fixed;right:calc(env(safe-area-inset-right,0px) + 12px);top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;gap:10px}
+.rail button{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--muted);
+  font-size:14px;display:grid;place-items:center;cursor:pointer;padding:0;transition:transform .2s,background .2s}
+.rail button[aria-current="true"]{background:var(--amber);color:var(--ink);border-color:var(--amber);transform:scale(1.15)}
+.rail button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h2{font-family:var(--display);font-weight:700;font-size:clamp(26px,7vw,38px);line-height:1.05;margin:0;text-wrap:balance}
+.lede{color:var(--muted);margin:0;line-height:1.5;max-width:46ch}
+.big{font-family:var(--display);font-weight:800;font-size:clamp(46px,14vw,84px);line-height:.95;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.delta{font-family:var(--mono);font-weight:600;font-size:18px}
+.up{color:var(--up)}.down{color:var(--down)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-family:var(--mono);font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:6px 12px;color:var(--muted)}
+.chip b{color:var(--text);font-weight:600}
+.chart{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:12px}
+.chart svg{display:block;width:100%;height:auto}
+.prog{display:flex;align-items:center;gap:12px}
+.bar{flex:1;height:8px;border-radius:99px;background:var(--panel-2);overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--violet),var(--amber));border-radius:99px}
+.desk{display:flex;align-items:center;gap:10px}
+.led{width:12px;height:12px;border-radius:50%;background:var(--idle);flex:none}
+.led.on{background:var(--up);box-shadow:0 0 0 4px #3ddc9722;animation:pulse 2.2s ease-in-out infinite}
+.led.wait{background:var(--amber);box-shadow:0 0 0 4px #ffb54722}
+@keyframes pulse{50%{box-shadow:0 0 0 9px #3ddc9700}}
+.rows{display:grid;gap:8px}
+.row{display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.sym{font-family:var(--display);font-weight:700;font-size:14px}
+.sym small{display:block;font-family:var(--body);font-weight:500;font-size:11px;color:var(--muted);margin-top:2px}
+.num{font-family:var(--mono);font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+.pips{display:flex;gap:4px}.pips i{flex:1;max-width:22px;height:10px;border-radius:3px;background:var(--panel-2)}
+.pips i.on{background:var(--violet)}
+.gauge{position:relative;height:10px;border-radius:99px;background:var(--panel-2)}
+.gauge::after{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:var(--muted);border-radius:2px}
+.gauge i{position:absolute;top:0;bottom:0;border-radius:99px}
+.tag{font-family:var(--mono);font-size:11px;font-weight:600;padding:3px 8px;border-radius:99px;background:var(--panel-2);color:var(--muted)}
+.tag.in{background:#3ddc9726;color:var(--up)}
+.vacant{border:1.5px dashed var(--line);border-radius:18px;padding:18px;display:grid;gap:6px}
+.vacant h3,.door h3{font-family:var(--display);font-size:16px;margin:0}
+.vacant p{margin:0;color:var(--muted)}
+.doors{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.door{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;display:grid;gap:4px;align-content:start}
+.door .n{font-family:var(--display);font-weight:800;font-size:28px}
+.door span{font-size:12px;color:var(--muted)}
+.door.hot{border-color:var(--up)}
+.stack{display:grid;gap:8px}
+.strat{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:baseline;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.strat .dot{width:8px;height:8px;border-radius:50%}
+.strat b{font-weight:600}.strat span{grid-column:2;color:var(--muted);font-size:12px}
+.strat.out{opacity:.55}
+.con{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.con b{display:block}.con span{color:var(--muted);font-size:13px}
+.hint{font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.hint i{display:inline-block;animation:bob 1.6s ease-in-out infinite;font-style:normal}
+@keyframes bob{50%{transform:translateY(5px)}}
+.foot{font-size:11px;color:var(--muted)}
+.empty{display:grid;gap:10px;place-items:start}
+@media (max-width:420px){.row{grid-template-columns:54px 1fr auto;padding:9px 12px}.doors{gap:6px}.door{padding:10px}}
+@media (prefers-reduced-motion:reduce){.feed{scroll-behavior:auto}.led.on,.hint i{animation:none}}
+</style>
+
+<header class="top"><span class="brand">Trading <b>Floor</b></span><span class="stamp" id="stamp">conectando…</span></header>
+<nav class="rail" id="rail" aria-label="Pantallas"></nav>
+<main class="feed" id="feed">
+  <section class="slide" style="--glow:#ffb54722">
+    <div class="empty" id="estado">
+      <span class="eyebrow">Agencia de bots · demo</span>
+      <h2>Abriendo el piso…</h2>
+      <p class="lede">Aquí aparecen la cuenta demo, los bots y el laboratorio. Los datos se actualizan solos cada mañana después de la señal de las 9.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money = v => "$" + Math.round(v).toLocaleString("en-US");
+const pct = v => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+
+function showEmpty(title, text) {
+  $("#estado").innerHTML = `<span class="eyebrow">Agencia de bots · demo</span><h2>${esc(title)}</h2><p class="lede">${esc(text)}</p>`;
+}
+
+function chart(h) {
+  if (!h || h.length < 2) return `<p class="lede">El gráfico aparece al segundo día.</p>`;
+  const W = 600, H = 220, L = 8, R = 8, T = 26, B = 28, base = 100000;
+  const vals = h.map(d => d.v).concat(base);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const pad = Math.max((hi - lo) * .2, 250); lo -= pad; hi += pad;
+  const x = i => L + i * (W - L - R) / (h.length - 1);
+  const y = v => T + (hi - v) * (H - T - B) / (hi - lo);
+  const pts = h.map((d, i) => `${x(i).toFixed(1)},${y(d.v).toFixed(1)}`).join(" ");
+  const last = h[h.length - 1], col = last.v >= base ? "var(--up)" : "var(--down)";
+  const orders = h.map((d, i) => d.o ? `<circle cx="${x(i)}" cy="${y(d.v)}" r="4" fill="var(--amber)"><title>${esc(d.f)}: ${d.o} órdenes</title></circle>` : "").join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Valor de la cuenta demo por día">
+    <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".35"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+    <line x1="${L}" x2="${W - R}" y1="${y(base)}" y2="${y(base)}" stroke="var(--muted)" stroke-dasharray="4 5" opacity=".6"/>
+    <text x="${W - R}" y="${y(base) - 7}" text-anchor="end" fill="var(--muted)" font-family="JetBrains Mono,monospace" font-size="12">$100k inicio</text>
+    <polygon points="${x(0)},${H - B} ${pts} ${x(h.length - 1)},${H - B}" fill="url(#g)"/>
+    <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    ${orders}
+    <circle cx="${x(h.length - 1)}" cy="${y(last.v)}" r="6" fill="${col}" stroke="var(--ink)" stroke-width="3"/>
+    <text x="${L}" y="${H - 8}" fill="var(--muted)" font-family="JetBrains Mono,monospace" font-size="12">${esc(h[0].f.slice(5))}</text>
+    <text x="${W - R}" y="${H - 8}" text-anchor="end" fill="var(--muted)" font-family="JetBrains Mono,monospace" font-size="12">${esc(last.f.slice(5))}</text>
+  </svg>`;
+}
+
+function render(d) {
+  const dm = d.demo, up = dm.ganancia_pct >= 0;
+  const cripto = d.activos.filter(a => a.tipo === "cripto"), etfs = d.activos.filter(a => a.tipo === "etf");
+  const bot = id => d.bots.find(b => b.tipo === id) || {};
+  const ledOf = s => s === "live" ? "on" : s === "pausa" ? "wait" : "";
+  const day = Math.min(dm.dias, dm.dias_prueba);
+  const rev = new Date(dm.revision + "T12:00:00").toLocaleDateString("es", {day: "numeric", month: "long"});
+  const stage = k => d.laboratorio.filter(s => s.etapa === k);
+  const colors = {live: "var(--up)", backtest: "var(--violet)", cola: "var(--amber)", reserva: "var(--muted)", rechazada: "var(--down)", real: "var(--up)"};
+  const strat = s => `<div class="strat ${s.etapa === "rechazada" ? "out" : ""}"><i class="dot" style="background:${colors[s.etapa]}"></i><b>${esc(s.nombre)}</b><span>${esc(s.dato)}</span></div>`;
+  const conState = {ok: ["on", "Conectado"], espera: ["wait", "Esperando"], pendiente: ["", "Por conectar"]};
+
+  const slides = [
+    {icon: "$", glow: up ? "#3ddc9722" : "#ff6b7a22", html: `
+      <span class="eyebrow">Cuenta demo · dinero de mentira</span>
+      <div><div class="big">${money(dm.valor)}</div><div class="delta ${up ? "up" : "down"}">${pct(dm.ganancia_pct)} desde el inicio</div></div>
+      <div class="chart">${chart(d.historial)}</div>
+      <div class="prog"><span class="chip">Día <b>${day}</b> de ${dm.dias_prueba}</span><div class="bar"><i style="width:${day / dm.dias_prueba * 100}%"></i></div></div>
+      <div class="chips"><span class="chip">Revisión <b>${esc(rev)}</b></span><span class="chip">Efectivo <b>${Math.round(dm.efectivo_pct)}%</b></span><span class="chip">Órdenes hoy <b>${dm.ordenes_hoy}</b></span></div>
+      <span class="hint"><i>↓</i> desliza para ver los bots</span>`},
+    {icon: "₿", glow: "#8f80ff26", html: `
+      <span class="eyebrow">Sala de bots · 1 de 2</span>
+      <div class="desk"><span class="led ${ledOf(bot("cripto").estado)}"></span><h2>${esc(bot("cripto").nombre)}</h2></div>
+      <p class="lede">${esc(bot("cripto").regla)} <b>${cripto.filter(a => a.peso > 0).length} de ${cripto.length}</b> monedas adentro hoy.</p>
+      <div class="rows">${cripto.map(a => `<div class="row"><span class="sym">${esc(a.sim)}</span>
+        <span class="pips" title="${a.votos} de 6 votos">${[0,1,2,3,4,5].map(k => `<i class="${k < a.votos ? "on" : ""}"></i>`).join("")}</span>
+        <span class="num ${a.peso > 0 ? "up" : ""}">${a.peso.toFixed(1)}%</span></div>`).join("")}</div>
+      <span class="foot">Barras moradas = votos a favor (de 6). Número = parte de la cuenta.</span>`},
+    {icon: "▤", glow: "#3ddc971f", html: `
+      <span class="eyebrow">Sala de bots · 2 de 2</span>
+      <div class="desk"><span class="led ${ledOf(bot("etf").estado)}"></span><h2>${esc(bot("etf").nombre)}</h2></div>
+      <p class="lede">${esc(bot("etf").regla)} <b>${etfs.filter(a => a.dentro).length} de ${etfs.length}</b> fondos adentro hoy.</p>
+      <div class="rows">${etfs.map(a => { const c = Math.max(-10, Math.min(10, a.dist)), w = Math.abs(c) * 5;
+        return `<div class="row"><span class="sym">${esc(a.sim)}<small>${esc(a.nombre)}</small></span>
+        <span class="gauge" title="${pct(a.dist)} contra su línea de 150 días"><i style="${c >= 0 ? `left:50%;width:${w}%;background:var(--up)` : `right:50%;width:${w}%;background:var(--down)`}"></i></span>
+        <span class="tag ${a.dentro ? "in" : ""}">${a.dentro ? "DENTRO" : "FUERA"}</span></div>`; }).join("")}</div>
+      <span class="foot">La raya del medio es la línea de 150 días. Verde a la derecha = sobre la línea.</span>`},
+    {icon: "✦", glow: "#ffb5471f", html: `
+      <span class="eyebrow">Sala de IAs · próximamente</span>
+      <h2>Escritorios libres</h2>
+      <p class="lede">Las IAs van a competir contra los bots, siempre con dinero de mentira primero.</p>
+      <div class="stack">${d.ias.map(a => `<div class="vacant"><div class="desk"><span class="led"></span><h3>${esc(a.nombre)}</h3></div><p>${esc(a.idea)}</p></div>`).join("")}</div>`},
+    {icon: "⚗", glow: "#8f80ff22", html: `
+      <span class="eyebrow">Laboratorio de estrategias</span>
+      <h2>Tres puertas antes del dinero real</h2>
+      <div class="doors">
+        <div class="door"><span>1 · Backtest</span><div class="n">${stage("backtest").length + stage("reserva").length + stage("live").length}</div><span>pasaron el examen</span></div>
+        <div class="door hot"><span>2 · Live test</span><div class="n">${stage("live").length}</div><span>en demo ahora</span></div>
+        <div class="door"><span>3 · Dinero real</span><div class="n">${stage("real").length}</div><span>solo con tu ✅</span></div>
+      </div>
+      <div class="stack">${["live", "real", "cola", "backtest", "reserva", "rechazada"].flatMap(stage).map(strat).join("")}</div>`},
+    {icon: "⇄", glow: "#3ddc971a", html: `
+      <span class="eyebrow">Recepción · conexiones</span>
+      <h2>El cable hacia los otros cerebros</h2>
+      <div class="stack">${d.conexiones.map(c => { const [l, t] = conState[c.estado] || ["", c.estado];
+        return `<div class="con"><span class="led ${l}"></span><div><b>${esc(c.nombre)}</b><span>${t} · ${esc(c.que)}</span></div></div>`; }).join("")}</div>
+      <span class="foot">Reglas probadas en el pasado. No es garantía ni asesoría. Tú decides.</span>`},
+  ];
+
+  const feed = $("#feed"), keep = feed.scrollTop;
+  feed.innerHTML = slides.map((s, i) => `<section class="slide" id="s${i}" style="--glow:${s.glow}">${s.html}</section>`).join("");
+  $("#rail").innerHTML = slides.map((s, i) => `<button type="button" data-i="${i}" aria-label="Pantalla ${i + 1}">${s.icon}</button>`).join("");
+  $("#rail").querySelectorAll("button").forEach(b => b.onclick = () => $("#s" + b.dataset.i).scrollIntoView());
+  feed.scrollTop = keep;
+  $("#stamp").textContent = "act. " + d.actualizado.slice(5);
+  watchRail();
+}
+
+let io;
+function watchRail() {
+  io?.disconnect();
+  io = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) document.querySelectorAll("#rail button").forEach(b => b.setAttribute("aria-current", b.dataset.i === e.target.id.slice(1)));
+  }), {root: $("#feed"), threshold: .55});
+  document.querySelectorAll(".slide").forEach(s => io.observe(s));
+}
+
+const DATA = {
+ "actualizado": "2026-11-03 12:47 PM",
+ "demo": {
+  "valor": 98905.84,
+  "ganancia_pct": -1.09,
+  "dias": 14,
+  "dias_prueba": 30,
+  "revision": "2026-11-20",
+  "ordenes_hoy": 0,
+  "efectivo_pct": 81.4
+ },
+ "historial": [
+  {
+   "f": "2026-10-21",
+   "v": 99987.5,
+   "o": 6
+  },
+  {
+   "f": "2026-10-22",
+   "v": 99815.3,
+   "o": 2
+  },
+  {
+   "f": "2026-10-23",
+   "v": 99571.19,
+   "o": 2
+  },
+  {
+   "f": "2026-10-24",
+   "v": 99460.73,
+   "o": 0
+  },
+  {
+   "f": "2026-10-25",
+   "v": 99460.73,
+   "o": 0
+  },
+  {
+   "f": "2026-10-26",
+   "v": 99590.84,
+   "o": 0
+  },
+  {
+   "f": "2026-10-27",
+   "v": 99588.77,
+   "o": 1
+  },
+  {
+   "f": "2026-10-28",
+   "v": 99735.18,
+   "o": 0
+  },
+  {
+   "f": "2026-10-29",
+   "v": 99825.2,
+   "o": 2
+  },
+  {
+   "f": "2026-10-30",
+   "v": 99389.89,
+   "o": 1
+  },
+  {
+   "f": "2026-10-31",
+   "v": 98936.86,
+   "o": 2
+  },
+  {
+   "f": "2026-11-02",
+   "v": 99034.12,
+   "o": 1
+  },
+  {
+   "f": "2026-11-03",
+   "v": 98905.84,
+   "o": 0
+  }
+ ],
+ "activos": [
+  {
+   "sim": "BTC",
+   "tipo": "cripto",
+   "precio": 76816.0,
+   "peso": 0.0,
+   "votos": 3
+  },
+  {
+   "sim": "ETH",
+   "tipo": "cripto",
+   "precio": 2253.29,
+   "peso": 0.0,
+   "votos": 2
+  },
+  {
+   "sim": "BNB",
+   "tipo": "cripto",
+   "precio": 699.25,
+   "peso": 0.0,
+   "votos": 2
+  },
+  {
+   "sim": "XRP",
+   "tipo": "cripto",
+   "precio": 1.2502,
+   "peso": 0.0,
+   "votos": 1
+  },
+  {
+   "sim": "ADA",
+   "tipo": "cripto",
+   "precio": 0.1886,
+   "peso": 0.0,
+   "votos": 0
+  },
+  {
+   "sim": "LTC",
+   "tipo": "cripto",
+   "precio": 53.72,
+   "peso": 0.0,
+   "votos": 2
+  },
+  {
+   "sim": "DOGE",
+   "tipo": "cripto",
+   "precio": 0.0742,
+   "peso": 0.0,
+   "votos": 1
+  },
+  {
+   "sim": "SOL",
+   "tipo": "cripto",
+   "precio": 91.98,
+   "peso": 0.0,
+   "votos": 2
+  },
+  {
+   "sim": "SPY",
+   "tipo": "etf",
+   "precio": 754.775,
+   "peso": 6.25,
+   "nombre": "S&P 500",
+   "dentro": true,
+   "dist": 1.35
+  },
+  {
+   "sim": "QQQ",
+   "tipo": "etf",
+   "precio": 686.17,
+   "peso": 0.0,
+   "nombre": "Nasdaq 100",
+   "dentro": false,
+   "dist": -2.61
+  },
+  {
+   "sim": "IWM",
+   "tipo": "etf",
+   "precio": 280.83,
+   "peso": 0.0,
+   "nombre": "Empresas pequeñas",
+   "dentro": false,
+   "dist": -1.5
+  },
+  {
+   "sim": "DIA",
+   "tipo": "etf",
+   "precio": 516.61,
+   "peso": 6.25,
+   "nombre": "Dow Jones",
+   "dentro": true,
+   "dist": 0.88
+  },
+  {
+   "sim": "TLT",
+   "tipo": "etf",
+   "precio": 81.09,
+   "peso": 0.0,
+   "nombre": "Bonos EE.UU.",
+   "dentro": false,
+   "dist": -1.66
+  },
+  {
+   "sim": "GLD",
+   "tipo": "etf",
+   "precio": 359.9363,
+   "peso": 0.0,
+   "nombre": "Oro",
+   "dentro": false,
+   "dist": -9.58
+  },
+  {
+   "sim": "EFA",
+   "tipo": "etf",
+   "precio": 103.25,
+   "peso": 0.0,
+   "nombre": "Europa/Japón",
+   "dentro": false,
+   "dist": -0.44
+  },
+  {
+   "sim": "EEM",
+   "tipo": "etf",
+   "precio": 61.155,
+   "peso": 0.0,
+   "nombre": "Emergentes",
+   "dentro": false,
+   "dist": -6.47
+  }
+ ],
+ "bots": [
+  {
+   "id": "voto_cripto",
+   "nombre": "Voto de tendencia",
+   "mercado": "Cripto · 8 monedas",
+   "parte": "50 % de la cuenta",
+   "regla": "6 jueces votan si la tendencia es buena. Más votos = más dinero adentro.",
+   "estado": "live",
+   "tipo": "cripto"
+  },
+  {
+   "id": "etf150",
+   "nombre": "Media 150 días",
+   "mercado": "ETFs · 8 fondos",
+   "parte": "50 % de la cuenta",
+   "regla": "Adentro si el precio está sobre su promedio de 150 días; afuera si está debajo.",
+   "estado": "live",
+   "tipo": "etf"
+  }
+ ],
+ "ias": [
+  {
+   "nombre": "IA de noticias",
+   "idea": "Lee titulares y decide. Solo dinero de mentira.",
+   "estado": "vacante"
+  },
+  {
+   "nombre": "IA de gráficos",
+   "idea": "Mira velas y patrones. Solo dinero de mentira.",
+   "estado": "vacante"
+  }
+ ],
+ "laboratorio": [
+  {
+   "nombre": "Voto de tendencia (cripto)",
+   "etapa": "live",
+   "dato": "Examen sorpresa: 19 %/año, peor caída −21 %"
+  },
+  {
+   "nombre": "Media 150 días (ETFs)",
+   "etapa": "live",
+   "dato": "Examen sorpresa: 9 %/año, peor caída −15 %"
+  },
+  {
+   "nombre": "Cruce de medias 20/100",
+   "etapa": "reserva",
+   "dato": "Pasó el examen, no supera a las elegidas"
+  },
+  {
+   "nombre": "Momentum 90 días",
+   "etapa": "reserva",
+   "dato": "Pasó el examen, no supera a las elegidas"
+  },
+  {
+   "nombre": "Tortugas (Donchian)",
+   "etapa": "reserva",
+   "dato": "Pasó el examen, más débil"
+  },
+  {
+   "nombre": "ETFs de materias primas",
+   "etapa": "cola",
+   "dato": "Ronda 3, cuando digas"
+  },
+  {
+   "nombre": "Retroceso en tendencia",
+   "etapa": "rechazada",
+   "dato": "Empató en cero en el examen"
+  },
+  {
+   "nombre": "Ruptura tras calma",
+   "etapa": "rechazada",
+   "dato": "Gana mucho menos que aguantar"
+  },
+  {
+   "nombre": "Price action de Romano (8 versiones)",
+   "etapa": "rechazada",
+   "dato": "Pierde en todas"
+  },
+  {
+   "nombre": "Intradía (5 tipos)",
+   "etapa": "rechazada",
+   "dato": "Pierden después de comisiones"
+  }
+ ],
+ "conexiones": [
+  {
+   "nombre": "Telegram @Tradingsito_bot",
+   "estado": "ok",
+   "que": "Aviso diario 9 AM"
+  },
+  {
+   "nombre": "Alpaca Paper",
+   "estado": "espera",
+   "que": "Falta pegar las claves para que opere solo"
+  },
+  {
+   "nombre": "Jarvis (París Crepes)",
+   "estado": "pendiente",
+   "que": "Por el buzón compartido"
+  },
+  {
+   "nombre": "Fábrica de videos",
+   "estado": "pendiente",
+   "que": "Se conecta cuando arranque el canal"
+  }
+ ]
+};
+render(DATA);
+const hoy = new Date().toLocaleDateString("en-CA");
+if (!DATA.actualizado.startsWith(hoy)) $("#stamp").textContent = "⚠ datos del " + DATA.actualizado.slice(5, 10);
+</script>
+</body></html>
