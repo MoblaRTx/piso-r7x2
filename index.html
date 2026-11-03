@@ -21,6 +21,9 @@ html,body{height:100%;margin:0;background:var(--ink);color:var(--text);font-fami
 .kpi b{display:block;font-family:var(--display);font-size:18px;font-variant-numeric:tabular-nums}
 .kpi span{font-family:var(--mono);font-size:11px}
 .up{color:var(--up)}.down{color:var(--down)}
+.nav{pointer-events:auto;cursor:pointer;margin-left:auto;align-self:center;font:600 12px var(--body);color:var(--ink);background:var(--amber);border:0;border-radius:99px;padding:9px 13px;white-space:nowrap}
+.nav:focus-visible,.kpi:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.boton{font:600 14px var(--body);color:var(--ink);background:var(--amber);border:0;border-radius:12px;padding:12px 16px;cursor:pointer;justify-self:start}
 #etiquetas{position:fixed;inset:0;pointer-events:none;z-index:3}
 .tag{position:absolute;transform:translate(-50%,-100%);white-space:nowrap;pointer-events:auto;cursor:pointer;
   font-size:11px;font-weight:600;background:#15131cdd;color:var(--text);border:1px solid #ffffff22;border-radius:99px;padding:3px 8px 3px 6px;display:flex;align-items:center;gap:5px}
@@ -66,7 +69,8 @@ html,body{height:100%;margin:0;background:var(--ink);color:var(--text);font-fami
 <div id="escena" aria-label="Oficina del Trading Floor en 3D. Toca a una persona o sala para ver sus datos."></div>
 <div id="etiquetas"></div>
 <header class="top">
-  <div class="brand">Trading <b>Floor</b><small id="stamp">abriendo…</small></div>
+  <div class="brand">La <b>Agencia</b><small id="stamp">abriendo…</small></div>
+  <button class="nav" id="nav" type="button">📈 Entrar a Trading</button>
   <button class="kpi" id="kpi" type="button"><b id="kpiValor">—</b><span id="kpiDelta">demo</span></button>
 </header>
 <div class="hint" id="hint">Toca a cualquiera · arrastra para moverte</div>
@@ -141,6 +145,18 @@ function abrir(tipo, extra) {
   if (tipo === "claude") { const j = d.jefe || {}; h = `<span class="eyebrow">Gerencia · jefe del piso</span><h2><span class="led on"></span>${esc(j.nombre || "Jarvis Trading")}</h2>
     <div class="chips"><span class="chip">Modelo <b>${esc(j.modelo || "Opus")}</b></span><span class="chip">Reporta a <b>Jarvis Central</b></span></div>
     <p>${esc(j.tarea || "")}</p><p>No mueve dinero real. Eso pasa solo con tu ✅.</p>`; }
+  if (tipo === "central") { const c = d.campus || [], aten = c.filter(p => p.necesita_de_romano);
+    h = `<span class="eyebrow">Campus · torre central</span><h2><span class="led on"></span>Jarvis Central</h2>
+    <div class="chips"><span class="chip">Modelo <b>Opus</b></span><span class="chip">Carpeta <b>Jarvis-Central</b></span><span class="chip">Le reportan <b>${c.length} áreas</b></span></div>
+    <p>Ve el cuadro completo, junta el parte del día de cada Jarvis y te dice qué necesita de ti. No toca correos ni dinero de nadie.</p>
+    <span class="eyebrow">Te necesitan</span>
+    <div class="rows">${aten.length ? aten.map(p => `<div class="strat"><b>${esc(p.nombre)}</b><span>${esc(p.necesita_de_romano)}</span></div>`).join("") : "<p>Nada pendiente. 🎉</p>"}</div>`; }
+  if (tipo === "area") { const p = extra, t = {ok: ["on", "Todo bien"], atencion: ["wait", "Necesita atención"], parado: ["off", "Parado"]}[p.estado] || ["", p.estado];
+    h = `<span class="eyebrow">Campus · ${esc(p.nombre)}</span><h2><span class="led ${t[0]}"></span>${esc(p.jefe)}</h2>
+    <div class="chips"><span class="chip">Modelo <b>${esc(p.modelo)}</b></span><span class="chip">Estado <b>${t[1]}</b></span><span class="chip">Reporta a <b>Jarvis Central</b></span></div>
+    <p>${esc(p.publico)}</p>${p.necesita_de_romano ? `<div class="strat"><b>Te necesita</b><span>${esc(p.necesita_de_romano)}</span></div>` : ""}
+    <span class="nota">Parte del día · ${esc(p.actualizado)}</span>
+    ${p.area === "trading" ? `<button class="boton" type="button" onclick="irA('trading')">Entrar a la oficina de Trading →</button>` : ""}`; }
   if (tipo === "lab") { const a = d.agente_lab || {}; h = `<span class="eyebrow">Laboratorio · agente</span><h2><span class="led on"></span>${esc(a.nombre)}</h2>${ficha(a)}
     <p>${esc(a.tarea || "")}</p>${(a.reporte || []).length ? `<div class="rows">${a.reporte.map(l => `<div class="strat"><span>${esc(l)}</span></div>`).join("")}</div>` : `<p>Sin pruebas nuevas hoy. En cola: ${esc((d.laboratorio.find(s => s.etapa === "cola") || {}).nombre || "nada")}.</p>`}`; }
   $("#hojaIn").innerHTML = h; $("#hoja").classList.add("abierta");
@@ -166,6 +182,7 @@ function render(d) {
 
 /* ---------- en vivo: vivo.json lo escribe un robot de GitHub cada 15 min ---------- */
 let VIVO = null, refrescarTele = () => {};
+let ZONA = "campus", construyendo = "trading", CENTROS = null, irA = () => {};
 async function pulso() {
   try {
     const r = await fetch("vivo.json?t=" + Date.now(), {cache: "no-store"}); if (!r.ok) return;
@@ -196,7 +213,11 @@ function construir(d) {
   const target = new THREE.Vector3(0, 0, 0);
   // en vertical (celular) la cámara mira más desde arriba para que la oficina ocupe más alto
   const dir = new THREE.Vector3(1, innerWidth < innerHeight ? 1.8 : 1.05, 1).normalize();
-  function ubicar() { cam.position.copy(target).addScaledVector(dir, 80); cam.lookAt(target); }
+  let sol = null;
+  function ubicar() {
+    cam.position.copy(target).addScaledVector(dir, 80); cam.lookAt(target);
+    if (sol) { sol.position.copy(target).add(new THREE.Vector3(-14, 30, 18)); sol.target.position.copy(target); }
+  }
   let vista = innerWidth < 700 ? 1.15 : 1;  // en el celular arranca más cerca; se aleja pellizcando
   function tam() {
     const w = innerWidth, h = innerHeight, a = w / h;
@@ -207,9 +228,9 @@ function construir(d) {
   ubicar(); tam(); addEventListener("resize", tam);
 
   scene.add(new THREE.HemisphereLight("#fff6ea", "#3a3350", .75));
-  const sol = new THREE.DirectionalLight("#fff1dc", .85); sol.position.set(-14, 30, 18); sol.castShadow = true;
+  sol = new THREE.DirectionalLight("#fff1dc", .85); sol.castShadow = true; scene.add(sol.target);
   sol.shadow.mapSize.set(2048, 2048); Object.assign(sol.shadow.camera, {left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 80});
-  sol.shadow.bias = -.0005; scene.add(sol);
+  sol.shadow.bias = -.0005; scene.add(sol); ubicar();
 
   const mats = {};
   const mat = (c, o = {}) => { const k = c + JSON.stringify(o); return mats[k] || (mats[k] = new THREE.MeshStandardMaterial(Object.assign({color: c, roughness: .85}, o))); };
@@ -281,7 +302,7 @@ function construir(d) {
   function etiqueta(html, pos, alClick, clase = "") {
     const el = document.createElement("button"); el.type = "button"; el.className = "tag " + clase; el.innerHTML = html;
     el.onclick = e => { e.stopPropagation(); alClick && alClick(); };
-    $("#etiquetas").appendChild(el); etiquetas.push({el, pos}); return el;
+    $("#etiquetas").appendChild(el); etiquetas.push({el, pos, zona: construyendo}); return el;
   }
   const marcar = (obj, fn) => obj.traverse(o => { if (o.isMesh) { o.userData.fn = fn; clicables.push(o); } });
 
@@ -396,6 +417,65 @@ function construir(d) {
     etiqueta(`<i class="on"></i>${esc(d.agente_lab.nombre)} · ${esc(d.agente_lab.modelo)}`, {g: lab, y: 1.95}, () => abrir("lab"), "fija");
   }
 
+  /* ---------- campus: Jarvis Central + un edificio por área ---------- */
+  CENTROS = {trading: new THREE.Vector3(0, 0, 0), campus: new THREE.Vector3(140, 0, 0)};
+  construyendo = "campus";
+  const C0 = CENTROS.campus;
+  caja(46, .4, 34, "#2a2536", C0.x, -.4, C0.z);
+  caja(44, .05, 32, "#7fa36b", C0.x, 0, C0.z);                       // pasto
+  caja(44, .07, 3, "#d8d0c2", C0.x, 0, C0.z); caja(3, .07, 32, "#d8d0c2", C0.x, 0, C0.z);  // caminos en cruz
+  cil(4.2, .08, "#d8d0c2", C0.x, 0, C0.z, scene, 32);               // plaza central
+  const luzEstado = {ok: "#3ddc97", atencion: "#ffb547", parado: "#ff6b7a"};
+  function edificio({x, z, w, dd, alto, pared, techo, vidrio: vd = "#9fd3ff"}) {
+    const g = new THREE.Group();
+    caja(w, alto, dd, pared, 0, 0, 0, {}, g); caja(w + .4, .3, dd + .4, techo, 0, alto, 0, {}, g);
+    for (let piso = 0; piso < Math.floor(alto / 1.6); piso++)
+      for (let i = 0; i < Math.floor(w / 1.5); i++)
+        caja(.8, .7, .05, vd, -w / 2 + .9 + i * 1.5, .7 + piso * 1.6, dd / 2 + .01, {emissive: vd, emissiveIntensity: .25}, g);
+    caja(1.2, 1.5, .08, "#3b3550", 0, 0, dd / 2 + .02, {}, g);       // puerta
+    g.position.set(x, 0, z); scene.add(g); return g;
+  }
+  // Jarvis Central (torre de vidrio al centro)
+  const torre = edificio({x: C0.x, z: C0.z - .5, w: 5, dd: 5, alto: 8, pared: "#2f3b55", techo: "#1d2433", vd: "#a8e1ff"});
+  esfera(.35, "#3ddc97", C0.x, 8.8, C0.z - .5, scene, {emissive: "#3ddc97", emissiveIntensity: 1.5});
+  const central = persona({ropa: "#1f2a44", piel: "#f1cfae", pelo: "#2a1f1a", x: C0.x + 1.6, z: C0.z + 3.6, rot: .3});
+  const abrirCentral = () => abrir("central");
+  marcar(torre, abrirCentral); marcar(central, abrirCentral);
+  etiqueta(`<i class="on"></i>Jarvis Central · Opus`, new THREE.Vector3(C0.x, 10, C0.z - .5), abrirCentral, "fija");
+  // un edificio por área, en las 4 esquinas
+  const estilo = {
+    "paris-crepes": {dx: -12, dz: -8, w: 7, dd: 5, alto: 3.4, pared: "#f3d9c4", techo: "#d9668a", ropa: "#d9668a"},
+    "trading":      {dx: 12, dz: -8, w: 8, dd: 6, alto: 4.8, pared: "#4a3d8c", techo: "#2e2659", ropa: "#8f80ff"},
+    "contenido":    {dx: -12, dz: 8, w: 7, dd: 5, alto: 4, pared: "#2b2b33", techo: "#e0533d", ropa: "#e0533d"},
+    "dropshipping": {dx: 12, dz: 8, w: 9, dd: 6, alto: 3.2, pared: "#b9a385", techo: "#6d5b45", ropa: "#c98b3a"},
+  };
+  (d.campus || []).forEach(p => {
+    const s = estilo[p.area]; if (!s) return;
+    const x = C0.x + s.dx, z = C0.z + s.dz;
+    const ed = edificio({x, z, w: s.w, dd: s.dd, alto: s.alto, pared: s.pared, techo: s.techo});
+    const col = luzEstado[p.estado] || "#6b6580";
+    const led = esfera(.3, col, x, s.alto + .8, z, scene, {emissive: col, emissiveIntensity: 1.5}); flotantes.push(led);
+    if (p.area === "paris-crepes") caja(s.w, .12, 1.2, "#f6f0e6", x, 2.4, z + s.dd / 2 + .55);   // toldo
+    if (p.area === "dropshipping") for (let i = 0; i < 4; i++) caja(.8, .8, .8, "#c99a5b", x - 3 + i * 1.1, 0, z + s.dd / 2 + 1.2);
+    if (p.area === "contenido") cil(.08, 1.6, "#22202a", x + 2.6, 0, z + s.dd / 2 + 1);           // trípode
+    const jefe = persona({ropa: s.ropa, piel: pieles[n++ % pieles.length], x: x - 1.5, z: z + s.dd / 2 + 1.4, rot: .2});
+    caminantes.push({g: jefe, x0: x - 3, x1: x + 3, z0: z + s.dd / 2 + .9, z1: z + s.dd / 2 + 2.6, dest: null, pausa: Math.random() * 4});
+    const fn = () => abrir("area", p);
+    marcar(ed, fn); marcar(jefe, fn);
+    etiqueta(`<i class="${p.estado === "ok" ? "on" : p.estado === "atencion" ? "wait" : "off"}"></i>${esc(p.jefe)} · ${esc(p.modelo)}`, {g: jefe, y: 1.95}, fn, "fija");
+    etiqueta(`${esc(p.nombre)}`, new THREE.Vector3(x, s.alto + 1.8, z), fn, "sala");
+  });
+  planta(C0.x - 4.5, C0.z + 4.5); planta(C0.x + 4.5, C0.z + 4.5); planta(C0.x - 4.5, C0.z - 5.5); planta(C0.x + 4.5, C0.z - 5.5);
+  construyendo = "trading";
+
+  irA = zona => {
+    ZONA = zona; target.copy(CENTROS[zona]); vista = innerWidth < 700 ? 1.15 : 1; tam(); ubicar();
+    $("#nav").textContent = zona === "campus" ? "📈 Entrar a Trading" : "🏙️ Volver al campus";
+    $("#hoja").classList.remove("abierta");
+  };
+  $("#nav").onclick = () => irA(ZONA === "campus" ? "trading" : "campus");
+  irA("campus");
+
   /* ---------- interacción: arrastrar, pellizcar, tocar ---------- */
   const ptrs = new Map(); let mov = 0, distIni = 0, zoomIni = 1;
   const right = new THREE.Vector3(), upv = new THREE.Vector3();
@@ -409,7 +489,8 @@ function construir(d) {
     const k = (cam.top - cam.bottom) / cam.zoom / innerHeight;
     right.setFromMatrixColumn(cam.matrix, 0); upv.setFromMatrixColumn(cam.matrix, 1);
     target.addScaledVector(right, -dx * k).addScaledVector(upv, dy * k);
-    target.y = 0; target.x = Math.max(-22, Math.min(22, target.x)); target.z = Math.max(-16, Math.min(16, target.z)); ubicar();
+    const c = CENTROS[ZONA];
+    target.y = 0; target.x = Math.max(c.x - 22, Math.min(c.x + 22, target.x)); target.z = Math.max(c.z - 16, Math.min(c.z + 16, target.z)); ubicar();
   });
   const soltar = e => {
     if (ptrs.size === 1 && mov < 8) {
@@ -444,7 +525,7 @@ function construir(d) {
       v.project(cam);
       e.el.style.left = ((v.x + 1) / 2 * w).toFixed(1) + "px"; e.el.style.top = ((1 - v.y) / 2 * h).toFixed(1) + "px";
       // en el celular, los nombres de cada persona aparecen al acercarse (pellizcar); las salas siempre
-      e.el.classList.toggle("lejos", !e.el.classList.contains("sala") && !e.el.classList.contains("fija") && vista < (w < 700 ? 1.7 : .8));
+      e.el.classList.toggle("lejos", e.zona !== ZONA || (!e.el.classList.contains("sala") && !e.el.classList.contains("fija") && vista < (w < 700 ? 1.7 : .8)));
     });
     requestAnimationFrame(cuadro);
   }
@@ -452,7 +533,7 @@ function construir(d) {
 }
 
 const DATA = {
- "actualizado": "2026-11-03 02:35 PM",
+ "actualizado": "2026-11-03 02:40 PM",
  "demo": {
   "valor": 98905.84,
   "ganancia_pct": -1.09,
@@ -804,6 +885,48 @@ const DATA = {
    "nombre": "Fábrica de videos",
    "estado": "pendiente",
    "que": "Se conecta cuando arranque el canal"
+  }
+ ],
+ "campus": [
+  {
+   "area": "paris-crepes",
+   "nombre": "París Crepes",
+   "jefe": "Jarvis París Crepes",
+   "modelo": "Opus",
+   "estado": "ok",
+   "publico": "La pata principal. Funciona con 1 empleada, pronto 2. Esperando su primer parte del día.",
+   "necesita_de_romano": "",
+   "actualizado": "2026-11-03 (provisional)"
+  },
+  {
+   "area": "trading",
+   "nombre": "Trading",
+   "jefe": "Jarvis Trading",
+   "modelo": "Opus",
+   "estado": "ok",
+   "publico": "Demo día 14 de 30. 0 órdenes hoy. 2 de 16 activos adentro. Revisión 2026-11-20.",
+   "necesita_de_romano": "Pegar las claves de Alpaca para que la demo opere sola",
+   "actualizado": "2026-11-03 02:40 PM"
+  },
+  {
+   "area": "contenido",
+   "nombre": "Contenido",
+   "jefe": "Jarvis Contenido",
+   "modelo": "Opus",
+   "estado": "atencion",
+   "publico": "Canal 'EE.UU. sin manual'. Fábrica de videos armada, video #1 aprobado. Faltan las cuentas de redes.",
+   "necesita_de_romano": "Crear las cuentas del canal",
+   "actualizado": "2026-11-03 (provisional)"
+  },
+  {
+   "area": "dropshipping",
+   "nombre": "Dropshipping",
+   "jefe": "Jarvis Dropshipping",
+   "modelo": "Opus",
+   "estado": "atencion",
+   "publico": "Investigación hecha. Siguiente: buscar 10 productos (gratis) cuando Romano diga.",
+   "necesita_de_romano": "Dar el OK para la Etapa 0",
+   "actualizado": "2026-11-03 (provisional)"
   }
  ]
 };
