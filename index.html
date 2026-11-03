@@ -151,7 +151,7 @@ function abrir(tipo, extra) {
     <p>Ve el cuadro completo, junta el parte del día de cada Jarvis y te dice qué necesita de ti. No toca correos ni dinero de nadie.</p>
     <span class="eyebrow">Te necesitan</span>
     <div class="rows">${aten.length ? aten.map(p => `<div class="strat"><b>${esc(p.nombre)}</b><span>${esc(p.necesita_de_romano)}</span></div>`).join("") : "<p>Nada pendiente. 🎉</p>"}</div>`; }
-  if (tipo === "area") { const p = extra, t = {ok: ["on", "Todo bien"], atencion: ["wait", "Necesita atención"], parado: ["off", "Parado"]}[p.estado] || ["", p.estado];
+  if (tipo === "area") { const p = extra, t = {ok: ["on", "Todo bien"], atencion: ["wait", "Necesita atención"], parado: ["off", "Parado"], construccion: ["wait", "En construcción 🚧"]}[p.estado] || ["", p.estado];
     h = `<span class="eyebrow">Campus · ${esc(p.nombre)}</span><h2><span class="led ${t[0]}"></span>${esc(p.jefe)}</h2>
     <div class="chips"><span class="chip">Modelo <b>${esc(p.modelo)}</b></span><span class="chip">Estado <b>${t[1]}</b></span><span class="chip">Reporta a <b>Jarvis Central</b></span></div>
     <p>${esc(p.publico)}</p>${p.necesita_de_romano ? `<div class="strat"><b>Te necesita</b><span>${esc(p.necesita_de_romano)}</span></div>` : ""}
@@ -462,7 +462,17 @@ function construir(d) {
   caja(46, .05, 34, "#5fa83a", C0.x, 0, C0.z);                       // pasto
   caja(46, .07, 3, "#b5a58a", C0.x, 0, C0.z); caja(3, .07, 34, "#b5a58a", C0.x, 0, C0.z);  // caminos en cruz
   caja(9, .08, 9, "#9e9e9e", C0.x, 0, C0.z);               // plaza central
-  const luzEstado = {ok: "#3ddc97", atencion: "#ffb547", parado: "#ff6b7a"};
+  const luzEstado = {ok: "#3ddc97", atencion: "#ffb547", parado: "#ff6b7a", construccion: "#ff9f1a"};
+  function obra({x, z, w, dd}) {  // edificio en construcción: losa, muros a medias, andamios y vallas
+    const g = new THREE.Group();
+    caja(w, .2, dd, "#9e9e9e", 0, 0, 0, {}, g);
+    caja(w, 1.2, .4, "#b0b0b0", 0, .2, -dd / 2 + .2, {}, g); caja(.4, 1.8, dd, "#b0b0b0", -w / 2 + .2, .2, 0, {}, g); caja(w * .4, .8, .4, "#b0b0b0", w * .3, .2, dd / 2 - .2, {}, g);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => caja(.18, 3.6, .18, "#c9a35a", a * (w / 2 + .3), 0, b * (dd / 2 + .3), {}, g));
+    [1.2, 2.4, 3.5].forEach(y => { caja(w + .8, .12, .18, "#c9a35a", 0, y, -dd / 2 - .3, {}, g); caja(w + .8, .12, .18, "#c9a35a", 0, y, dd / 2 + .3, {}, g); });
+    for (let i = 0; i < 6; i++) caja(.9, .45, .25, i % 2 ? "#222222" : "#ffcc00", -w / 2 + .5 + i * (w / 5.2), 0, dd / 2 + 1.3, {}, g);
+    caja(.6, 3, .6, "#ffcc00", w / 2 + 1.4, 0, -dd / 2, {}, g); caja(4, .3, .3, "#ffcc00", w / 2 - .2, 3, -dd / 2, {}, g);   // grúa
+    g.position.set(x, 0, z); scene.add(g); return g;
+  }
   function edificio({x, z, w, dd, alto, pared, techo, vidrio: vd = "#9fd3ff"}) {
     const g = new THREE.Group();
     caja(w, alto, dd, pared, 0, 0, 0, {}, g); caja(w + .4, .3, dd + .4, techo, 0, alto, 0, {}, g);
@@ -484,26 +494,29 @@ function construir(d) {
     "paris-crepes": {dx: -12, dz: -8, w: 7, dd: 5, alto: 3.4, pared: "#f3d9c4", techo: "#d9668a", ropa: "#d9668a"},
     "trading":      {dx: 12, dz: -8, w: 8, dd: 6, alto: 4.8, pared: "#4a3d8c", techo: "#2e2659", ropa: "#8f80ff"},
     "contenido":    {dx: -12, dz: 8, w: 7, dd: 5, alto: 4, pared: "#2b2b33", techo: "#e0533d", ropa: "#e0533d"},
-    "dropshipping": {dx: 12, dz: 8, w: 9, dd: 6, alto: 3.2, pared: "#b9a385", techo: "#6d5b45", ropa: "#c98b3a"},
+    "automatizaciones": {dx: 12, dz: 8, w: 8, dd: 5, alto: 4.2, pared: "#2a9d8f", techo: "#1d6b62", ropa: "#2a9d8f"},
+    "dropshipping": {dx: -6, dz: 13.8, w: 5.5, dd: 3, alto: 3.6, pared: "#b9a385", techo: "#6d5b45", ropa: "#ff8c1a"},
   };
   (d.campus || []).forEach(p => {
     const s = estilo[p.area]; if (!s) return;
     const x = C0.x + s.dx, z = C0.z + s.dz;
-    const ed = edificio({x, z, w: s.w, dd: s.dd, alto: s.alto, pared: s.pared, techo: s.techo});
+    const enObra = p.estado === "construccion";
+    const ed = enObra ? obra({x, z, w: s.w, dd: s.dd}) : edificio({x, z, w: s.w, dd: s.dd, alto: s.alto, pared: s.pared, techo: s.techo});
     const col = luzEstado[p.estado] || "#6b6580";
     const led = esfera(.3, col, x, s.alto + .8, z, scene, {emissive: col, emissiveIntensity: 1.5}); flotantes.push(led);
     if (p.area === "paris-crepes") caja(s.w, .12, 1.2, "#f6f0e6", x, 2.4, z + s.dd / 2 + .55);   // toldo
-    if (p.area === "dropshipping") for (let i = 0; i < 4; i++) caja(.8, .8, .8, "#c99a5b", x - 3 + i * 1.1, 0, z + s.dd / 2 + 1.2);
+    if (p.area === "automatizaciones") { caja(.15, 1.8, .15, "#d0d0d0", x + 2.5, s.alto + .3, z - 1); caja(.5, .5, .5, "#e05a5a", x + 2.5, s.alto + 2.1, z - 1, {emissive: "#e05a5a", emissiveIntensity: .8}); }  // antena
     if (p.area === "contenido") cil(.08, 1.6, "#22202a", x + 2.6, 0, z + s.dd / 2 + 1);           // trípode
-    const jefe = persona({ropa: s.ropa, piel: pieles[n++ % pieles.length], x: x - 1.5, z: z + s.dd / 2 + 1.4, rot: .2});
-    caminantes.push({g: jefe, x0: x - 3, x1: x + 3, z0: z + s.dd / 2 + .9, z1: z + s.dd / 2 + 2.6, dest: null, pausa: Math.random() * 4});
+    const jefe = persona({ropa: s.ropa, piel: pieles[n++ % pieles.length], x: x - 1.5, z: z + s.dd / 2 + (enObra ? 2.4 : 1.4), rot: .2});
+    if (enObra) caja(.52, .14, .52, "#ffcc00", 0, 1.68, 0, {}, jefe);   // casco
+    if (!enObra) caminantes.push({g: jefe, x0: x - 3, x1: x + 3, z0: z + s.dd / 2 + .9, z1: z + s.dd / 2 + 2.6, dest: null, pausa: Math.random() * 4});
     const fn = () => abrir("area", p);
     marcar(ed, fn); marcar(jefe, fn);
-    etiqueta(`<i class="${p.estado === "ok" ? "on" : p.estado === "atencion" ? "wait" : "off"}"></i>${esc(p.jefe)} · ${esc(p.modelo)}`, {g: jefe, y: 1.95}, fn, "fija");
-    etiqueta(`${esc(p.nombre)}`, new THREE.Vector3(x, s.alto + 1.8, z), fn, "sala");
+    etiqueta(`<i class="${p.estado === "ok" ? "on" : p.estado === "parado" ? "off" : "wait"}"></i>${esc(p.jefe)} · ${esc(enObra ? "en pausa" : p.modelo)}`, {g: jefe, y: 1.95}, fn, enObra ? "" : "fija");
+    etiqueta(`${esc(p.nombre)}${enObra ? " 🚧" : ""}`, new THREE.Vector3(x, s.alto + 1.8, z), fn, "sala");
   });
   const arbol = (x, z, a = 2.2) => { caja(.5, a, .5, "#6b4a2b", x, 0, z); caja(2.2, 1.2, 2.2, "#3f8f2f", x, a - .3, z); caja(1.3, .8, 1.3, "#4ea33a", x, a + .9, z); };
-  [[-4.5, 4.5], [4.5, 4.5], [-4.5, -5.5], [4.5, -5.5], [-21, -15], [21, -15], [-21, 15], [21, 15], [-3, -15.5], [3, 15.5], [-21, 0], [21, 2]]
+  [[-4.5, 4.5], [4.5, 4.5], [-4.5, -5.5], [4.5, -5.5], [-21, -15], [21, -15], [-21, 15], [21, 15], [-3, -15.5], [6, 15.5], [-21, 0], [21, 2]]
     .forEach(([a, b], i) => arbol(C0.x + a, C0.z + b, 2 + (i % 3) * .5));
   for (let i = 0; i < 18; i++) caja(1, .35, 1, ["#e8d44d", "#e05a5a", "#ffffff"][i % 3], C0.x - 20 + azar() * 40, 0, C0.z + (azar() < .5 ? -1 : 1) * (12.5 + azar() * 3));  // flores
   construyendo = "trading";
@@ -574,7 +587,7 @@ function construir(d) {
 }
 
 const DATA = {
- "actualizado": "2026-11-03 02:40 PM",
+ "actualizado": "2026-11-03 02:51 PM",
  "demo": {
   "valor": 98905.84,
   "ganancia_pct": -1.09,
@@ -930,6 +943,16 @@ const DATA = {
  ],
  "campus": [
   {
+   "area": "trading",
+   "nombre": "Trading",
+   "jefe": "Jarvis Trading",
+   "modelo": "Opus",
+   "estado": "ok",
+   "publico": "Demo día 14 de 30. 0 órdenes hoy. 2 de 16 activos adentro. Revisión 2026-11-20.",
+   "necesita_de_romano": "Pegar las claves de Alpaca para que la demo opere sola",
+   "actualizado": "2026-11-03 02:51 PM"
+  },
+  {
    "area": "paris-crepes",
    "nombre": "París Crepes",
    "jefe": "Jarvis París Crepes",
@@ -940,23 +963,23 @@ const DATA = {
    "actualizado": "2026-11-03 (provisional)"
   },
   {
-   "area": "trading",
-   "nombre": "Trading",
-   "jefe": "Jarvis Trading",
-   "modelo": "Opus",
-   "estado": "ok",
-   "publico": "Demo día 14 de 30. 0 órdenes hoy. 2 de 16 activos adentro. Revisión 2026-11-20.",
-   "necesita_de_romano": "Pegar las claves de Alpaca para que la demo opere sola",
-   "actualizado": "2026-11-03 02:40 PM"
-  },
-  {
    "area": "contenido",
    "nombre": "Contenido",
    "jefe": "Jarvis Contenido",
+   "modelo": "Claude Opus 5.5",
+   "estado": "ok",
+   "publico": "Canal 'EE.UU. sin manual' en marcha en TikTok, Instagram y YouTube. Primer video publicado hoy. La fábrica hace un video nuevo cada mañana.",
+   "necesita_de_romano": "Subir a mano los videos #2 y #3 (uno por día) y fijar el comentario en el video #1.",
+   "actualizado": "2026-11-03 15:00"
+  },
+  {
+   "area": "automatizaciones",
+   "nombre": "Web y Automatizaciones",
+   "jefe": "Jarvis Automatizaciones",
    "modelo": "Opus",
-   "estado": "atencion",
-   "publico": "Canal 'EE.UU. sin manual'. Fábrica de videos armada, video #1 aprobado. Faltan las cuentas de redes.",
-   "necesita_de_romano": "Crear las cuentas del canal",
+   "estado": "ok",
+   "publico": "El part-time de Romano: páginas web y automatizaciones para clientes. Trabaja en su propio chat. Esperando su primer parte del día.",
+   "necesita_de_romano": "",
    "actualizado": "2026-11-03 (provisional)"
   },
   {
@@ -964,10 +987,10 @@ const DATA = {
    "nombre": "Dropshipping",
    "jefe": "Jarvis Dropshipping",
    "modelo": "Opus",
-   "estado": "atencion",
-   "publico": "Investigación hecha. Siguiente: buscar 10 productos (gratis) cuando Romano diga.",
-   "necesita_de_romano": "Dar el OK para la Etapa 0",
-   "actualizado": "2026-11-03 (provisional)"
+   "estado": "construccion",
+   "publico": "En construcción. La investigación está guardada; se retoma cuando las otras patas estén andando.",
+   "necesita_de_romano": "",
+   "actualizado": "2026-11-03 (pausado por Romano)"
   }
  ]
 };
